@@ -1,4 +1,4 @@
--- Description: Stormwind Royal Guards misssing swords
+-- Description: Stormwind Royal Guards missing swords
 -- Author: https://github.com/xXBentRealityXx
 -- Patch: https://github.com/alexkulya/pandaria_5.4.8/issues/1578
 
