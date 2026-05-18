@@ -285,9 +285,10 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (23028, 0, 3, 0, 38, 0, 100, 0, 1, 1, 0, 0, 11, 40845, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, "Bonechewer Taskmaster - On Data Set 1 1 - Cast 'Fury'"),
 (23028, 0, 4, 0, 38, 0, 100, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, "Bonechewer Taskmaster - On Data Set 1 1 - Say Text Line 1 (No Repeat)"),
 
-(22963, 0, 0, 0, 0, 0, 100, 1, 5000, 15000, 0, 0, 11, 40844, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, "Bonechewer Worker - In Combat - Cast 'Throw Pick' (No Repeat)"),
-(22963, 0, 1, 0, 8, 0, 15, 0, 40851, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, "Bonechewer Worker - On Spellhit 'Disgruntled' - Say Text Line 0"),
-(22963, 0, 2, 0, 6, 0, 100, 0, 0, 0, 0, 0, 45, 1, 1, 0, 0, 0, 0, 19, 23028, 40, 0, 0, 0, 0, 0, "Bonechewer Worker - On Just Died - Set Data 1 1 (Creature ID: 23028, 40 Yards)");
+(22963, 0, 0, 0, 4, 0, 100, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, "Bonechewer Worker - On Aggro - Set Emote State (0)"),
+(22963, 0, 1, 0, 0, 0, 100, 1, 5000, 15000, 0, 0, 11, 40844, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, "Bonechewer Worker - In Combat - Cast 'Throw Pick' (No Repeat)"),
+(22963, 0, 2, 0, 8, 0, 15, 0, 40851, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, "Bonechewer Worker - On Spellhit 'Disgruntled' - Say Text Line 0"),
+(22963, 0, 3, 0, 6, 0, 100, 0, 0, 0, 0, 0, 45, 1, 1, 0, 0, 0, 0, 19, 23028, 40, 0, 0, 0, 0, 0, "Bonechewer Worker - On Just Died - Set Data 1 1 (Creature ID: 23028, 40 Yards)");
 
 DELETE FROM `creature_text` WHERE `entry` IN (22963, 23028);
 INSERT INTO `creature_text` (`entry`, `text_group`, `id`, `text`, `text_female`, `text_range`, `type`, `language`, `probability`, `emote`, `duration`, `sound`, `comment`) VALUES
@@ -300,3 +301,7 @@ INSERT INTO `creature_text` (`entry`, `text_group`, `id`, `text`, `text_female`,
 (23028, 0, 2, "Stop your slacking and fight like a true fel orc!", "", 0, 14, 0, 100, 0, 0, 0, "Bonechewer Taskmaster"),
 (23028, 0, 3, "You call that an offense? I've seen more offensive tallstriders!", "", 0, 14, 0, 100, 0, 0, 0, "Bonechewer Taskmaster"),
 (23028, 1, 0, "%s becomes increasingly enraged as he sees his allies fall in battle!", "", 0, 16, 0, 100, 0, 0, 0, "Bonechewer Taskmaster");
+
+DELETE FROM `conditions` WHERE `SourceEntry` = 40851 AND `SourceGroup` = 7 AND `SourceTypeOrReferenceId` = 13;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
+(13, 7, 40851, 0, 0, 31, 0, 3, 22963, 0, 0, 0, 0, "", "Target Bonechewer Worker");
