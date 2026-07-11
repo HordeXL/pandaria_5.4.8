@@ -27,6 +27,11 @@
 #endif
 #include <mysql.h>
 
+// Compatibility with MySQL 8.0+ (my_bool removed in MySQL 8.0)
+#ifndef my_bool
+typedef bool my_bool;
+#endif
+
 class ResultSet
 {
     public:

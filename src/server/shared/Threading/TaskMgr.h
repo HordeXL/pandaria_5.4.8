@@ -1,19 +1,19 @@
 /*
-* This file is part of the Pandaria 5.4.8 Project. See THANKS file for Copyright information
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms of the GNU General Public License as published by the
-* Free Software Foundation; either version 2 of the License, or (at your
-* option) any later version.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License along
-* with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
+ * This file is part of the Pandaria 5.4.8 Project. See THANKS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef  TASK_SCHEDULER_H
 #define  TASK_SCHEDULER_H
@@ -26,12 +26,13 @@
 
 class ThreadPool
 {
-    typedef std::unique_ptr<boost::asio::io_service::work> worker;
-    typedef boost::asio::io_service service;
+    // Boost 1.87+: io_service renamed to io_context, work replaced by executor_work_guard
+    typedef boost::asio::io_context service;
+    typedef boost::asio::executor_work_guard<service::executor_type> worker;
     typedef boost::thread_group pool;
 public:
     ThreadPool(size_t threads)
-        : _worker(new worker::element_type{ _service })
+        : _worker(_service.get_executor())
     {
         while (threads--)
         {
@@ -50,7 +51,7 @@ public:
     template<class F>
     void Enqueue(F f)
     {
-        _service.post(f);
+        boost::asio::post(_service, f);
     }
 
 private:

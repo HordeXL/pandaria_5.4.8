@@ -19,6 +19,11 @@
 #include "MySQLConnection.h"
 #include "Log.h"
 
+// Compatibility with MySQL 8.0+ (my_bool removed in MySQL 8.0)
+#ifndef my_bool
+typedef bool my_bool;
+#endif
+
 PreparedStatement::PreparedStatement(uint32 index) :
 m_stmt(NULL),
 m_index(index) { }

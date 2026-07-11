@@ -145,7 +145,7 @@ extern int main(int argc, char** argv)
 
     TC_LOG_INFO("server.worldserver", "Using configuration file %s.", cfg_file);
 
-    TC_LOG_INFO("server.worldserver", "Using SSL version: %s (library: %s)", OPENSSL_VERSION_TEXT, OpenSSL_version(OPENSSL_VERSION));
+    TC_LOG_INFO("server.worldserver", "Using SSL version: %s (library: %s)", OPENSSL_VERSION_TEXT, SSLeay_version(SSLEAY_VERSION));
     TC_LOG_INFO("server.worldserver", "Using ACE version: %s", ACE_VERSION);
 
     ///- and run the 'Master'

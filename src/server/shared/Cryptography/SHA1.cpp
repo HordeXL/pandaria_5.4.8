@@ -22,7 +22,7 @@
 
 SHA1Hash::SHA1Hash()
 {
-    m_ctx = EVP_MD_CTX_new();
+    m_ctx = EVP_MD_CTX_create();
     EVP_DigestInit_ex(m_ctx, EVP_sha1(), nullptr);
 }
 
@@ -45,7 +45,7 @@ SHA1Hash& SHA1Hash::operator=(SHA1Hash other) // assign
 
 SHA1Hash::~SHA1Hash()
 {
-    EVP_MD_CTX_free(m_ctx);
+    EVP_MD_CTX_destroy(m_ctx);
 }
 
 void SHA1Hash::Swap(SHA1Hash& other) throw()

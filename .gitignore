@@ -3,3 +3,6 @@
 /out/build
 /.vs
 build
+/node_modules
+import_db.bat
+/.reasonix
