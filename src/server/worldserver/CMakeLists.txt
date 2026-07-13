@@ -120,6 +120,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/server/game/Guilds
   ${CMAKE_SOURCE_DIR}/src/server/game/Handlers
   ${CMAKE_SOURCE_DIR}/src/server/game/Instances
+  ${CMAKE_SOURCE_DIR}/src/server/game/LuaEngine
   ${CMAKE_SOURCE_DIR}/src/server/game/Loot
   ${CMAKE_SOURCE_DIR}/src/server/game/Mails
   ${CMAKE_SOURCE_DIR}/src/server/game/Maps
@@ -145,6 +146,10 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/server/game/Warden/Modules
   ${CMAKE_SOURCE_DIR}/src/server/game/Weather
   ${CMAKE_SOURCE_DIR}/src/server/game/World
+  ${CMAKE_SOURCE_DIR}/src/server/game/BattlePet
+  ${CMAKE_SOURCE_DIR}/src/server/game/BattlePay
+  ${CMAKE_SOURCE_DIR}/src/server/game/Anticheat
+  ${CMAKE_SOURCE_DIR}/src/server/game/CustomTransmogrification
   ${CMAKE_SOURCE_DIR}/src/server/scripts/ScriptLoader
   ${CMAKE_SOURCE_DIR}/src/server/authserver/Server
   ${CMAKE_SOURCE_DIR}/src/server/authserver/Realms

@@ -45,6 +45,7 @@
 #include "CreatureAI.h"
 #include "DBCEnums.h"
 #include "ScriptMgr.h"
+#include "HookMgr.h"
 #include "MapManager.h"
 #include "InstanceScript.h"
 #include "GameObjectAI.h"
@@ -202,6 +203,7 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
         else if (item)
         {
             sScriptMgr->OnGossipSelectCode(_player, item, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId), code.c_str());
+            sHookMgr->HandleGossipSelectOption(_player, item, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId), code);
         }
         else
         {
@@ -225,6 +227,7 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
         else if (item)
         {
             sScriptMgr->OnGossipSelect(_player, item, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
+            sHookMgr->HandleGossipSelectOption(_player, item, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId), "");
         }
         else
         {

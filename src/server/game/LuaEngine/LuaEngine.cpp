@@ -244,7 +244,13 @@ void Eluna::Initialize()
 {
     // Check define for eluna is enabled or disabled
 #ifdef ELUNA
+    if (sConfigMgr->GetBoolDefault("Eluna.Enabled", true))
+    {
+        TC_LOG_INFO("server.loading", "[Eluna]: Lua Engine is enabled.");
         StartEluna(false);
+    }
+    else
+        TC_LOG_INFO("server.loading", "[Eluna]: Lua Engine is disabled via config (Eluna.Enabled = 0).");
 #else
         TC_LOG_ERROR("server.loading", "[Eluna]: LuaEngine is Disabled. (If you want to use it please enable in cmake)");
 #endif

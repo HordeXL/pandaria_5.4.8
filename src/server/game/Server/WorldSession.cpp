@@ -43,6 +43,7 @@
 #include "SocialMgr.h"
 #include "zlib.h"
 #include "ScriptMgr.h"
+#include "HookMgr.h"
 #include "Transport.h"
 #include "WardenWin.h"
 #include "BattlePetMgr.h"
@@ -658,6 +659,7 @@ void WorldSession::LogoutPlayer(bool save)
 
         //! Call script hook before deletion
         sScriptMgr->OnPlayerLogout(_player);
+        sHookMgr->OnLogout(_player);
 
         //! Remove the player from the world
         // the player may not be in the world when logging out

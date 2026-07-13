@@ -48,6 +48,7 @@
 #include "DBCStores.h"
 #include "DB2Stores.h"
 #include "LootMgr.h"
+#include "LuaEngine.h"
 #include "ItemEnchantmentMgr.h"
 #include "MapManager.h"
 #include "CreatureAIRegistry.h"
@@ -1786,7 +1787,6 @@ void World::SetInitialWorldSettings()
     ///- Initialize game event manager
     sGameEventMgr->Initialize();
 
-    ///- Loading strings. Getting no records means core load has to be canceled because no error message can be output.
 
     TC_LOG_INFO("server.loading", "Loading Trinity strings...");
 
@@ -2429,6 +2429,8 @@ void World::SetInitialWorldSettings()
     sObjectMgr->LoadGuildChallengeRewardInfo();
 
     sServiceMgr->LoadFromDB();
+    ///- Initialize Eluna Lua Engine
+    sEluna->Initialize();
 
     uint32 startupDuration = GetMSTimeDiffToNow(startupBegin);
 

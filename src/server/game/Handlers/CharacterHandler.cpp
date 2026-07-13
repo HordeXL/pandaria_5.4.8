@@ -37,6 +37,7 @@
 #include "Player.h"
 #include "ReputationMgr.h"
 #include "ScriptMgr.h"
+#include "HookMgr.h"
 #include "SharedDefines.h"
 #include "SocialMgr.h"
 #include "SystemConfig.h"
@@ -1323,6 +1324,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     pCurrChar->UpdatePromotionAuras();
 
     sScriptMgr->OnPlayerLogin(pCurrChar);
+    sHookMgr->OnLogin(pCurrChar);
 
     if (pCurrChar->HasAtLoginFlag(AT_LOGIN_POST_AUTOTRANSFER))
     {
