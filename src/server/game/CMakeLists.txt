@@ -30,6 +30,10 @@ file(GLOB_RECURSE sources_DungeonFinding DungeonFinding/*.cpp DungeonFinding/*.h
 file(GLOB_RECURSE sources_Entities Entities/*.cpp Entities/*.h)
 file(GLOB_RECURSE sources_Events Events/*.cpp Events/*.h)
 file(GLOB_RECURSE sources_Globals Globals/*.cpp Globals/*.h)
+
+if(ELUNA)
+  file(GLOB_RECURSE sources_LuaEngine LuaEngine/*.cpp LuaEngine/*.h)
+endif()
 file(GLOB_RECURSE sources_Grids Grids/*.cpp Grids/*.h)
 file(GLOB_RECURSE sources_Groups Groups/*.cpp Groups/*.h)
 file(GLOB_RECURSE sources_Guilds Guilds/*.cpp Guilds/*.h)
@@ -80,6 +84,11 @@ source_group(Combat FILES ${sources_Combat})
 source_group(Conditions FILES ${sources_Conditions})
 source_group(CustomTransmogrification FILES ${sources_CustomTransmogrification})
 source_group(CustomLogs FILES ${sources_CustomLogs})
+
+if(ELUNA)
+  source_group(LuaEngine FILES ${sources_LuaEngine})
+endif()
+
 source_group(DataStores FILES ${sources_DataStores})
 source_group(DungeonFinding FILES ${sources_DungeonFinding})
 source_group(Entities FILES ${sources_Entities})
@@ -120,6 +129,7 @@ if (USE_COREPCH)
   set(game_STAT_PCH_SRC PrecompiledHeaders/gamePCH.cpp)
 endif ()
 
+
 set(game_STAT_SRCS
   ${game_STAT_SRCS}
   ${sources_Accounts}
@@ -141,6 +151,7 @@ set(game_STAT_SRCS
   ${sources_CustomLogs}
   ${sources_CustomTransmogrification}
   ${sources_DataStores}
+  ${sources_LuaEngine}
   ${sources_DungeonFinding}
   ${sources_Entities}
   ${sources_Events}
@@ -279,6 +290,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/Tools
   ${CMAKE_CURRENT_SOURCE_DIR}/Tickets
   ${CMAKE_CURRENT_SOURCE_DIR}/Vignette
+  ${CMAKE_CURRENT_SOURCE_DIR}/LuaEngine
   ${CMAKE_CURRENT_SOURCE_DIR}/Warden
   ${CMAKE_CURRENT_SOURCE_DIR}/Warden/Modules
   ${CMAKE_CURRENT_SOURCE_DIR}/Weather
@@ -299,7 +311,27 @@ add_library(game STATIC
 
 add_dependencies(game revision.h)
 
+if(ELUNA)
+  target_link_libraries(game lua)
+endif()
+
 # Generate precompiled header
 if (USE_COREPCH)
   add_cxx_pch(game ${game_STAT_PCH_HDR} ${game_STAT_PCH_SRC})
 endif ()
+
+if(ELUNA)
+  if(MSVC)
+    add_custom_command(TARGET game POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin/$(ConfigurationName)/lua_scripts/"
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/LuaEngine/scripts" "${CMAKE_BINARY_DIR}/bin/$(ConfigurationName)/lua_scripts/"
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin/$(ConfigurationName)/lua_scripts/extensions/"
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/LuaEngine/extensions" "${CMAKE_BINARY_DIR}/bin/$(ConfigurationName)/lua_scripts/extensions/")
+  elseif(UNIX)
+    add_custom_command(TARGET game POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin/lua_scripts/"
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/LuaEngine/scripts" "${CMAKE_BINARY_DIR}/bin/lua_scripts/"
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin/lua_scripts/extensions/"
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/LuaEngine/extensions" "${CMAKE_BINARY_DIR}/bin/lua_scripts/extensions/")
+  endif()
+endif()
