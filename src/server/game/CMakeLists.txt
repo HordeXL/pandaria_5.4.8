@@ -314,6 +314,7 @@ add_dependencies(game revision.h)
 if(ELUNA)
   target_link_libraries(game lua)
   target_compile_definitions(game PRIVATE ELUNA=1)
+  target_compile_options(game PRIVATE /utf-8)
 endif()
 
 # Generate precompiled header

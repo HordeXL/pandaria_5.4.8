@@ -2436,6 +2436,15 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.worldserver", "World initialized in %u minutes %u seconds", (startupDuration / 60000), ((startupDuration % 60000) / 1000));
 
+    TC_LOG_INFO("server.worldserver", "");
+    TC_LOG_INFO("server.worldserver", "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    TC_LOG_INFO("server.worldserver", " Pandaria 5.4.8 Release 编译者：等待依然");
+    TC_LOG_INFO("server.worldserver", "");
+    TC_LOG_INFO("server.worldserver", " 郑重声明：在使用本程序期间导致或产生一切后果和责任由使用者自行承担，本人概不负责，请知悉。");
+    TC_LOG_INFO("server.worldserver", " 如不同意，请立即停止使用本程序，并立即删除本程序。如使用默认使用者同意所有声明。");
+    TC_LOG_INFO("server.worldserver", "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    TC_LOG_INFO("server.worldserver", "");
+
     if (uint32 realmId = sConfigMgr->GetIntDefault("RealmID", 0)) // 0 reserved for auth
         sLog->SetRealmId(realmId);
 }
