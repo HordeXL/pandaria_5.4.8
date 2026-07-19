@@ -1,0 +1,156 @@
+/*
+* This file is part of the Pandaria 5.4.8 Project. See THANKS file for Copyright information
+*
+* This program is free software; you can redistribute it and/or modify it
+* under the terms of the GNU General Public License as published by the
+* Free Software Foundation; either version 2 of the License, or (at your
+* option) any later version.
+*
+* This program is distributed in the hope that it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+* more details.
+*
+* You should have received a copy of the GNU General Public License along
+* with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include "Item.h"
+#include "Player.h"
+#include "QuestDef.h"
+#include "ScriptedGossip.h"
+#include "ScriptMgr.h"
+#include "ObjectMgr.h"
+#include "DatabaseEnv.h"
+
+class item_quest_completer : public ItemScript
+{
+public:
+    item_quest_completer() : ItemScript("item_quest_completer") { }
+
+    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
+    {
+        if (player->IsInCombat())
+        {
+            player->GetSession()->SendNotification("You are in combat!");
+            return true;
+        }
+
+        // Build list of incomplete quests
+        std::map<uint32, QuestStatusData> const& questMap = player->getQuestStatusMap();
+        uint32 count = 0;
+
+        player->PlayerTalkClass->ClearMenus();
+
+        for (auto const& itr : questMap)
+        {
+            if (itr.second.Status != QUEST_STATUS_INCOMPLETE)
+                continue;
+
+            Quest const* quest = sObjectMgr->GetQuestTemplate(itr.first);
+            if (!quest)
+                continue;
+
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, quest->GetTitle(), GOSSIP_SENDER_MAIN, itr.first);
+            ++count;
+        }
+
+        if (count == 0)
+        {
+            player->GetSession()->SendNotification("You have no incomplete quests!");
+            player->CLOSE_GOSSIP_MENU();
+            return true;
+        }
+
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Nevermind", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, item->GetGUID());
+        return true;
+    }
+
+    void OnGossipSelect(Player* player, Item* /*item*/, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+
+        if (action == GOSSIP_ACTION_INFO_DEF + 1)
+        {
+            player->CLOSE_GOSSIP_MENU();
+            return;
+        }
+
+        // action is the quest ID
+        uint32 questId = action;
+        Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
+
+        if (!quest || player->GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE)
+        {
+            player->GetSession()->SendNotification("Quest not found or already completed!");
+            player->CLOSE_GOSSIP_MENU();
+            return;
+        }
+
+        // Auto-complete the quest (fill objectives + reward)
+        player->CompleteQuest(questId, true, true);
+
+        // Log to database
+        LogQuestCompletion(player, quest);
+
+        player->GetSession()->SendNotification("Quest '%s' completed!", quest->GetTitle().c_str());
+        player->CLOSE_GOSSIP_MENU();
+    }
+
+private:
+    void LogQuestCompletion(Player* player, Quest const* quest) const
+    {
+        uint32 questId = quest->GetQuestId();
+
+        // Find quest giver NPC from database
+        uint32 questGiverNpc = 0;
+        QueryResult starterResult = WorldDatabase.PQuery("SELECT id FROM creature_queststarter WHERE quest=%u", questId);
+        if (starterResult)
+            questGiverNpc = starterResult->Fetch()[0].GetUInt32();
+
+        // Find turn-in NPC from database
+        uint32 questTurninNpc = 0;
+        QueryResult turninResult = WorldDatabase.PQuery("SELECT id FROM creature_questender WHERE quest=%u", questId);
+        if (turninResult)
+            questTurninNpc = turninResult->Fetch()[0].GetUInt32();
+
+        // Build objectives text
+        std::string objectives;
+        for (auto const* obj : quest->m_questObjectives)
+        {
+            if (!objectives.empty())
+                objectives += "; ";
+            objectives += obj->Description;
+        }
+
+        if (objectives.empty())
+            objectives = quest->GetObjectives();
+
+        // Determine faction
+        std::string faction = player->GetTeam() == ALLIANCE ? "联盟" : "部落";
+
+        // Escape strings for SQL
+        std::string questName = quest->GetTitle();
+        WorldDatabase.EscapeString(questName);
+        std::string objectivesEscaped = objectives;
+        WorldDatabase.EscapeString(objectivesEscaped);
+        std::string playerName = player->GetName();
+        WorldDatabase.EscapeString(playerName);
+
+        // Skip if this quest was already recorded (by any player)
+        QueryResult result = WorldDatabase.PQuery("SELECT id FROM 任务完成记录 WHERE quest_id=%u", questId);
+        if (result)
+            return;
+
+        WorldDatabase.PExecute("INSERT INTO 任务完成记录 (quest_id, quest_name, quest_giver_npc, quest_objectives, quest_turnin_npc, player_name, faction) "
+            "VALUES (%u, '%s', %u, '%s', %u, '%s', '%s')",
+            questId, questName.c_str(), questGiverNpc, objectivesEscaped.c_str(), questTurninNpc,
+            playerName.c_str(), faction.c_str());
+    }
+};
+
+void AddSC_quest_completer()
+{
+    new item_quest_completer();
+}
