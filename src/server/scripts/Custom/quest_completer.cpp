@@ -32,7 +32,7 @@ public:
     {
         if (player->IsInCombat())
         {
-            player->GetSession()->SendNotification("You are in combat!");
+            player->GetSession()->SendNotification("你处于战斗状态!");
             return true;
         }
 
@@ -57,7 +57,7 @@ public:
 
         if (count == 0)
         {
-            player->GetSession()->SendNotification("You have no incomplete quests!");
+            player->GetSession()->SendNotification("你没有未完成的任务!");
             player->CLOSE_GOSSIP_MENU();
             return true;
         }
@@ -83,7 +83,7 @@ public:
 
         if (!quest || player->GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE)
         {
-            player->GetSession()->SendNotification("Quest not found or already completed!");
+            player->GetSession()->SendNotification("未找到该任务或任务已完成!");
             player->CLOSE_GOSSIP_MENU();
             return;
         }
@@ -94,7 +94,7 @@ public:
         // Log to database
         LogQuestCompletion(player, quest);
 
-        player->GetSession()->SendNotification("Quest '%s' completed!", quest->GetTitle().c_str());
+        player->GetSession()->SendNotification("任务「%s」已完成!", quest->GetTitle().c_str());
         player->CLOSE_GOSSIP_MENU();
     }
 
