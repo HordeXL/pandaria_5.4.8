@@ -40,10 +40,10 @@ extern void StartEluna(bool restart);
 
 static bool HandleReloadElunaCommand(ChatHandler* handler, char const* /*args*/)
 {
-    TC_LOG_INFO("server.loading", "[Eluna]: Reloading Lua Engine via GM command...");
-    handler->SendSysMessage("Reloading Eluna Lua Engine...");
+    TC_LOG_INFO("server.loading", "[Eluna]: 通过GM命令重新加载Lua引擎...");
+    handler->SendSysMessage("正在重新加载 Eluna Lua 引擎...");
     StartEluna(true);
-    handler->SendSysMessage("Eluna Lua Engine reloaded.");
+    handler->SendSysMessage("Eluna Lua 引擎重新加载完成.");
     return true;
 }
 
