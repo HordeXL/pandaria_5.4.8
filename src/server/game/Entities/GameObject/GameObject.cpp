@@ -1256,6 +1256,9 @@ void GameObject::Use(Unit* user)
 
     if (Player* playerUser = user->ToPlayer())
     {
+        if (sScriptMgr->OnReportUse(playerUser, this))
+            return;
+
         if (sScriptMgr->OnGossipHello(playerUser, this))
             return;
 

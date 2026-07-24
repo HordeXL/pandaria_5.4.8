@@ -617,9 +617,22 @@ namespace LuaPlayer
     int SetMovement(lua_State* L, Player* player)
     {
         int32 pType = luaL_checkinteger(L, 1);
-        // Player::SetMovement does not exist in MoP
-        // Use Unit::SetMovement instead if needed
-        luaL_error(L, "SetMovement is not implemented in MoP");
+        switch (pType)
+        {
+            case 0: // IDLE
+                player->GetMotionMaster()->Clear();
+                player->GetMotionMaster()->MoveIdle();
+                break;
+            case 1: // RANDOM
+                player->GetMotionMaster()->Clear();
+                player->GetMotionMaster()->MoveRandom(10.0f);
+                break;
+            case 2: // FOLLOW - not implemented for player, fallback to idle
+            default:
+                player->GetMotionMaster()->Clear();
+                player->GetMotionMaster()->MoveIdle();
+                break;
+        }
         return 0;
     }
 

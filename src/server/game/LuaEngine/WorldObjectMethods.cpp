@@ -11,6 +11,8 @@
 #include "GameObject.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
 
 namespace LuaWorldObject
 {

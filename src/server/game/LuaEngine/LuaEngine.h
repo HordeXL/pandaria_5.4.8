@@ -676,6 +676,7 @@ class Eluna
         // Doesn't get self
         class WorldObjectInRangeCheck
         {
+            public:
             WorldObjectInRangeCheck(bool nearest, WorldObject const* obj, float range,
                                     TypeID typeId = TYPEID_OBJECT, uint32 entry = 0) : i_nearest(nearest),
                 i_obj(obj), i_range(range), i_typeId(typeId), i_entry(entry) {}
@@ -704,7 +705,8 @@ class Eluna
             uint32 i_entry;
             bool i_nearest;
 
-            WorldObjectInRangeCheck(WorldObjectInRangeCheck const&);
+            public:
+            WorldObjectInRangeCheck(WorldObjectInRangeCheck const&) = default;
         };
 };
 #define sEluna Eluna::instance()

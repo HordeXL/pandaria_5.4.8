@@ -1088,6 +1088,10 @@ bool ScriptMgr::OnConditionCheck(Condition* condition, ConditionSourceInfo& sour
 {
     ASSERT(condition);
 
+    FOR_SCRIPTS_RET(ConditionScript, itr, end, true)
+        if (!itr->second->OnConditionCheck(condition, sourceInfo))
+            return false;
+
     GET_SCRIPT_RET(ConditionScript, condition->ScriptId, tmpscript, true);
     return tmpscript->OnConditionCheck(condition, sourceInfo);
 }

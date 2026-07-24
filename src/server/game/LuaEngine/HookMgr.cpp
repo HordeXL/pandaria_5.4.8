@@ -689,7 +689,7 @@ void HookMgr::OnGiveXP(Player* pPlayer, uint32& amount, Unit* pVictim)
     }
 }
 
-void HookMgr::OnReputationChange(Player* pPlayer, uint32 factionID, int32& standing, bool incremental)
+void HookMgr::OnReputationChange(Player* pPlayer, uint32 factionID, float& standing, bool incremental)
 {
     for (std::vector<int>::const_iterator itr = sEluna->PlayerEventBindings[PLAYER_EVENT_ON_REPUTATION_CHANGE].begin();
         itr != sEluna->PlayerEventBindings[PLAYER_EVENT_ON_REPUTATION_CHANGE].end(); ++itr)
@@ -1731,7 +1731,7 @@ struct HookMgr::ElunaGameObjectAI : public GameObjectAI
     }
 };
 
-void HookMgr::OnAddMember(Guild* guild, Player* player, uint32 plRank)
+void HookMgr::OnAddMember(Guild* guild, Player* player, uint8& plRank)
 {
     for (std::vector<int>::const_iterator itr = sEluna->GuildEventBindings[GUILD_EVENT_ON_ADD_MEMBER].begin();
         itr != sEluna->GuildEventBindings[GUILD_EVENT_ON_ADD_MEMBER].end(); ++itr)
@@ -1996,4 +1996,7 @@ void AddElunaScripts()
 {
     new HookMgr::ElunaWorldAI();
     new ElunaGameObjectScript();
+    new ElunaPlayerScript();
+    new ElunaGuildScript();
+    new ElunaConditionScript();
 }

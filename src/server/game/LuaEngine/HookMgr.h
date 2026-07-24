@@ -269,6 +269,7 @@ struct HookMgr
     struct ElunaCreatureAI;
     struct ElunaGameObjectAI;
     struct ElunaWorldAI;
+    struct ElunaPlayerScript;
     CreatureAI* GetAI(Creature* creature);
     GameObjectAI* GetAI(GameObject* gameObject);
 
@@ -306,7 +307,7 @@ struct HookMgr
     bool OnQuestAccept(Player* pPlayer, GameObject* pGameObject, Quest const* pQuest);
     bool OnQuestComplete(Player* pPlayer, GameObject* pGameObject, Quest const* pQuest);
     bool OnQuestReward(Player* pPlayer, GameObject* pGameObject, Quest const* pQuest);
-    bool OnGameObjectUse(Player* pPlayer, GameObject* pGameObject) { return false; }; // TODO? Not on TC
+    bool OnGameObjectUse(Player* pPlayer, GameObject* pGameObject) { return false; }; // Cannot fix: TrinityCore does not have this event
     QuestGiverStatus GetDialogStatus(Player* pPlayer, GameObject* pGameObject);
     void OnDestroyed(GameObject* pGameObject, Player* pPlayer);
     void OnDamaged(GameObject* pGameObject, Player* pPlayer);
@@ -323,7 +324,7 @@ struct HookMgr
     void OnTalentsReset(Player* pPlayer, bool noCost);
     void OnMoneyChanged(Player* pPlayer, int64& amount);
     void OnGiveXP(Player* pPlayer, uint32& amount, Unit* pVictim);
-    void OnReputationChange(Player* pPlayer, uint32 factionID, int32& standing, bool incremental);
+    void OnReputationChange(Player* pPlayer, uint32 factionID, float& standing, bool incremental);
     void OnDuelRequest(Player* pTarget, Player* pChallenger);
     void OnDuelStart(Player* pStarter, Player* pChallenger);
     void OnDuelEnd(Player* pWinner, Player* pLoser, DuelCompleteType type);
@@ -368,7 +369,7 @@ struct HookMgr
     void OnRemovePassenger(Transport* transport, Player* player);
     void OnRelocate(Transport* transport, uint32 waypointId, uint32 mapId, float x, float y, float z);
     /* Guild */
-    void OnAddMember(Guild* guild, Player* player, uint32 plRank);
+    void OnAddMember(Guild* guild, Player* player, uint8& plRank);
     void OnRemoveMember(Guild* guild, Player* player, bool isDisbanding, bool isKicked);
     void OnMOTDChanged(Guild* guild, const std::string& newMotd);
     void OnInfoChanged(Guild* guild, const std::string& newInfo);
@@ -424,6 +425,146 @@ public:
     void OnGameObjectStateChanged(GameObject* go, uint32 state) override
     {
         sHookMgr->OnGameObjectStateChanged(go, state);
+    }
+    bool OnReportUse(Player* player, GameObject* go) override
+    {
+        return sHookMgr->OnGameObjectUse(player, go);
+    }
+};
+
+class ElunaPlayerScript : public PlayerScript
+{
+public:
+    ElunaPlayerScript() : PlayerScript("ElunaPlayerScript") { }
+    ~ElunaPlayerScript() { }
+
+    void OnMapChanged(Player* player) override
+    {
+        sHookMgr->OnMapChanged(player);
+    }
+    void OnLogin(Player* player) override
+    {
+        sHookMgr->OnLogin(player);
+    }
+    void OnLogout(Player* player) override
+    {
+        sHookMgr->OnLogout(player);
+    }
+    void OnCreate(Player* player) override
+    {
+        sHookMgr->OnCreate(player);
+    }
+    void OnSave(Player* player) override
+    {
+        sHookMgr->OnSave(player);
+    }
+    void OnLevelChanged(Player* player, uint8 oldLevel) override
+    {
+        sHookMgr->OnLevelChanged(player, oldLevel);
+    }
+    void OnGiveXP(Player* player, uint32& amount, Unit* victim) override
+    {
+        sHookMgr->OnGiveXP(player, amount, victim);
+    }
+    void OnReputationChange(Player* player, uint32 factionID, float& standing, bool incremental) override
+    {
+        sHookMgr->OnReputationChange(player, factionID, standing, incremental);
+    }
+    void OnDuelStart(Player* starter, Player* challenger) override
+    {
+        sHookMgr->OnDuelStart(starter, challenger);
+    }
+    void OnDuelEnd(Player* winner, Player* loser, DuelCompleteType type) override
+    {
+        sHookMgr->OnDuelEnd(winner, loser, type);
+    }
+    void OnChat(Player* player, uint32 type, uint32 lang, std::string& msg) override
+    {
+        sHookMgr->OnChat(player, type, lang, msg);
+    }
+    void OnChat(Player* player, uint32 type, uint32 lang, std::string& msg, Group* group) override
+    {
+        sHookMgr->OnChat(player, type, lang, msg, group);
+    }
+    void OnChat(Player* player, uint32 type, uint32 lang, std::string& msg, Guild* guild) override
+    {
+        sHookMgr->OnChat(player, type, lang, msg, guild);
+    }
+    void OnChat(Player* player, uint32 type, uint32 lang, std::string& msg, Channel* channel) override
+    {
+        sHookMgr->OnChat(player, type, lang, msg, channel);
+    }
+    void OnEmote(Player* player, uint32 emote) override
+    {
+        sHookMgr->OnEmote(player, emote);
+    }
+    void OnSpellCast(Player* player, Spell* spell, bool skipCheck) override
+    {
+        sHookMgr->OnSpellCast(player, spell, skipCheck);
+    }
+    void OnPVPKill(Player* killer, Player* killed) override
+    {
+        sHookMgr->OnPVPKill(killer, killed);
+    }
+    void OnCreatureKill(Player* killer, Creature* killed) override
+    {
+        sHookMgr->OnCreatureKill(killer, killed);
+    }
+    void OnPlayerKilledByCreature(Creature* killer, Player* killed) override
+    {
+        sHookMgr->OnPlayerKilledByCreature(killer, killed);
+    }
+    void OnMoneyChanged(Player* player, int64& amount) override
+    {
+        sHookMgr->OnMoneyChanged(player, amount);
+    }
+    void OnUpdateZone(Player* player, uint32 newZone, uint32 newArea) override
+    {
+        sHookMgr->OnUpdateZone(player, newZone, newArea);
+    }
+    void OnBindToInstance(Player* player, Difficulty difficulty, uint32 mapid, bool permanent) override
+    {
+        sHookMgr->OnBindToInstance(player, difficulty, mapid, permanent);
+    }
+};
+
+class ElunaGuildScript : public GuildScript
+{
+public:
+    ElunaGuildScript() : GuildScript("ElunaGuildScript") { }
+    ~ElunaGuildScript() { }
+
+    void OnCreate(Guild* guild, Player* leader, const std::string& name) override
+    {
+        sHookMgr->OnCreate(guild, leader, name);
+    }
+    void OnAddMember(Guild* guild, Player* player, uint8& plRank) override
+    {
+        sHookMgr->OnAddMember(guild, player, plRank);
+    }
+    void OnRemoveMember(Guild* guild, Player* player, bool isDisbanding, bool isKicked) override
+    {
+        sHookMgr->OnRemoveMember(guild, player, isDisbanding, isKicked);
+    }
+    void OnMOTDChanged(Guild* guild, const std::string& newMotd) override
+    {
+        sHookMgr->OnMOTDChanged(guild, newMotd);
+    }
+    void OnInfoChanged(Guild* guild, const std::string& newInfo) override
+    {
+        sHookMgr->OnInfoChanged(guild, newInfo);
+    }
+};
+
+class ElunaConditionScript : public ConditionScript
+{
+public:
+    ElunaConditionScript() : ConditionScript("ElunaConditionScript") { }
+    ~ElunaConditionScript() { }
+
+    bool OnConditionCheck(Condition* condition, ConditionSourceInfo& sourceInfo) override
+    {
+        return sHookMgr->OnConditionCheck(condition, sourceInfo);
     }
 };
 
