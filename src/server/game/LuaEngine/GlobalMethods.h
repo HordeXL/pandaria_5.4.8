@@ -473,13 +473,13 @@ namespace LuaGlobalFunctions
         return 1;
     }
 
-    /*// FindUnit(guid)
+    // FindUnit(guid)
     int FindUnit(lua_State* L)
     {
         uint64 guid = sEluna->CHECK_ULONG(L, 1);
-        // sEluna->Push(L, sObjectAccessor->FindUnit(guid));
+        sEluna->Push(L, sObjectAccessor->FindUnit(guid));
         return 1;
-    }*/
+    }
 
     // GetPlayerGUID(lowguid)
     static int GetPlayerGUID(lua_State* L)

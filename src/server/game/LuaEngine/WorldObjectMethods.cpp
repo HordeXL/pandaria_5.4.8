@@ -91,117 +91,116 @@ namespace LuaWorldObject
 
     int GetNearestPlayer(lua_State* L, WorldObject* obj)
     {
-        // float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
+        float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
 
-        // Player* target = nullptr;
-        // Eluna::WorldObjectInRangeCheck checker(true, obj, range, TYPEID_PLAYER);
-        // Trinity::PlayerLastSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, target, checker);
+        Player* target = nullptr;
+        Eluna::WorldObjectInRangeCheck checker(true, obj, range, TYPEID_PLAYER);
+        Trinity::PlayerLastSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, target, checker);
+        obj->VisitNearbyObject(range, searcher);
 
-        // sEluna->Push(L, target);
+        sEluna->Push(L, target);
         return 1;
     }
 
-    int GetNearestGameObject(lua_State* L, WorldObject* obj) // hackfix
+    int GetNearestGameObject(lua_State* L, WorldObject* obj)
     {
-        // float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
-        // uint32 entry = luaL_optunsigned(L, 2, 0);
+        float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
+        uint32 entry = luaL_optunsigned(L, 2, 0);
 
-        // GameObject* target = nullptr;
-        // Eluna::WorldObjectInRangeCheck checker(true, obj, range, TYPEID_GAMEOBJECT, entry);
-        // Trinity::GameObjectLastSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, target, checker);
-        // obj->VisitNearbyGridObject(range, searcher);
+        GameObject* target = nullptr;
+        Eluna::WorldObjectInRangeCheck checker(true, obj, range, TYPEID_GAMEOBJECT, entry);
+        Trinity::GameObjectLastSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, target, checker);
+        obj->VisitNearbyObject(range, searcher);
 
-        // sEluna->Push(L, target);
+        sEluna->Push(L, target);
         return 1;
     }
 
-    int GetNearestCreature(lua_State* L, WorldObject* obj) // hackfix
+    int GetNearestCreature(lua_State* L, WorldObject* obj)
     {
-        // float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
-        // uint32 entry = luaL_optunsigned(L, 2, 0);
+        float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
+        uint32 entry = luaL_optunsigned(L, 2, 0);
 
-        // Creature* target = nullptr;
-        // Eluna::WorldObjectInRangeCheck checker(true, obj, range, TYPEID_UNIT, entry);
-        // Trinity::CreatureLastSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, target, checker);
-        // obj->VisitNearbyGridObject(range, searcher);
+        Creature* target = nullptr;
+        Eluna::WorldObjectInRangeCheck checker(true, obj, range, TYPEID_UNIT, entry);
+        Trinity::CreatureLastSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, target, checker);
+        obj->VisitNearbyObject(range, searcher);
 
-        // sEluna->Push(L, target);
+        sEluna->Push(L, target);
         return 1;
     }
 
-    int GetPlayersInRange(lua_State* L, WorldObject* obj) // hackfix
+    int GetPlayersInRange(lua_State* L, WorldObject* obj)
     {
-        // float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
+        float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
 
-        // std::list<Player*> list;
-        // Eluna::WorldObjectInRangeCheck checker(false, obj, range, TYPEID_PLAYER);
-        // Trinity::PlayerListSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, list, checker);
-        // obj->VisitNearbyWorldObject(range, searcher);
+        std::list<Player*> list;
+        Eluna::WorldObjectInRangeCheck checker(false, obj, range, TYPEID_PLAYER);
+        Trinity::PlayerListSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, list, checker);
+        obj->VisitNearbyObject(range, searcher);
 
-        // lua_newtable(L);
-        // int tbl = lua_gettop(L);
-        // uint32 i = 0;
+        lua_newtable(L);
+        int tbl = lua_gettop(L);
+        uint32 i = 0;
 
-        // for (std::list<Player*>::const_iterator it = list.begin(); it != list.end(); ++it)
-        // {
-        //     sEluna->Push(L, ++i);
-        //     sEluna->Push(L, *it);
-        //     lua_settable(L, tbl);
-        // }
+        for (std::list<Player*>::const_iterator it = list.begin(); it != list.end(); ++it)
+        {
+            sEluna->Push(L, ++i);
+            sEluna->Push(L, *it);
+            lua_settable(L, tbl);
+        }
 
-        // lua_settop(L, tbl);
+        lua_settop(L, tbl);
         return 1;
     }
 
-    int GetCreaturesInRange(lua_State* L, WorldObject* obj) // hackfix
+    int GetCreaturesInRange(lua_State* L, WorldObject* obj)
     {
-        // float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
-        // uint32 entry = luaL_optunsigned(L, 2, 0);
+        float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
+        uint32 entry = luaL_optunsigned(L, 2, 0);
 
-        // std::list<Creature*> list;
-        // Eluna::WorldObjectInRangeCheck checker(false, obj, range, TYPEID_UNIT);
-        // Trinity::CreatureListSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, list, checker);
-        // obj->VisitNearbyGridObject(range, searcher);
+        std::list<Creature*> list;
+        Eluna::WorldObjectInRangeCheck checker(false, obj, range, TYPEID_UNIT, entry);
+        Trinity::CreatureListSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, list, checker);
+        obj->VisitNearbyObject(range, searcher);
 
-        // lua_newtable(L);
-        // int tbl = lua_gettop(L);
-        // uint32 i = 0;
+        lua_newtable(L);
+        int tbl = lua_gettop(L);
+        uint32 i = 0;
 
-        // for (std::list<Creature*>::const_iterator it = list.begin(); it != list.end(); ++it)
-        // {
-        //     sEluna->Push(L, ++i);
-        //     sEluna->Push(L, *it);
-        //     lua_settable(L, tbl);
-        // }
+        for (std::list<Creature*>::const_iterator it = list.begin(); it != list.end(); ++it)
+        {
+            sEluna->Push(L, ++i);
+            sEluna->Push(L, *it);
+            lua_settable(L, tbl);
+        }
 
-        // lua_settop(L, tbl);
+        lua_settop(L, tbl);
         return 1;
     }
 
-    int GetGameObjectsInRange(lua_State* L, WorldObject* obj) // hackfix
+    int GetGameObjectsInRange(lua_State* L, WorldObject* obj)
     {
-        // float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
-        // uint32 entry = luaL_optunsigned(L, 2, 0);
+        float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
+        uint32 entry = luaL_optunsigned(L, 2, 0);
 
-        // float x, y, z;
-        // obj->GetPosition(x, y, z);
-        // std::list<GameObject*> list;
-        // Eluna::WorldObjectInRangeCheck checker(false, obj, range, TYPEID_GAMEOBJECT);
-        // Trinity::GameObjectListSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, list, checker);
-        // obj->VisitNearbyGridObject(range, searcher);
+        std::list<GameObject*> list;
+        Eluna::WorldObjectInRangeCheck checker(false, obj, range, TYPEID_GAMEOBJECT, entry);
+        Trinity::GameObjectListSearcher<Eluna::WorldObjectInRangeCheck> searcher(obj, list, checker);
+        obj->VisitNearbyObject(range, searcher);
 
-        // lua_newtable(L);
-        // int tbl = lua_gettop(L);
-        // uint32 i = 0;
+        lua_newtable(L);
+        int tbl = lua_gettop(L);
+        uint32 i = 0;
 
-        // for (std::list<GameObject*>::const_iterator it = list.begin(); it != list.end(); ++it)
-        // {
-        //     sEluna->Push(L, ++i);
-        //     sEluna->Push(L, *it);
-        //     lua_settable(L, tbl);
-        // }
+        for (std::list<GameObject*>::const_iterator it = list.begin(); it != list.end(); ++it)
+        {
+            sEluna->Push(L, ++i);
+            sEluna->Push(L, *it);
+            lua_settable(L, tbl);
+        }
 
-        // lua_settop(L, tbl);
+        lua_settop(L, tbl);
         return 1;
     }
 

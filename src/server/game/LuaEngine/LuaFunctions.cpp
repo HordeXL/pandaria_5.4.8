@@ -56,7 +56,7 @@ void RegisterGlobals(lua_State* L)
     lua_register(L, "GetGuildByName", &LuaGlobalFunctions::GetGuildByName);                                 // GetGuildByName(name) - Returns guild object by the guild name
     lua_register(L, "GetGuildByLeaderGUID", &LuaGlobalFunctions::GetGuildByLeaderGUID);                     // GetGuildByLeaderGUID(guid) - Returns guild by it's leader's guid
     lua_register(L, "GetPlayerCount", &LuaGlobalFunctions::GetPlayerCount);                                 // GetPlayerCount() - Returns the server's player count
-    //lua_register(L, "FindUnit", &LuaGlobalFunctions::FindUnit);                                             // FindUnit(guid) - Returns unit by it's guid
+    lua_register(L, "FindUnit", &LuaGlobalFunctions::FindUnit);                                             // FindUnit(guid) - Returns unit by it's guid
     lua_register(L, "GetPlayerGUID", &LuaGlobalFunctions::GetPlayerGUID);                                   // GetPlayerGUID(lowguid) - Generates GUID (uint64) string from player lowguid UNDOCUMENTED
     lua_register(L, "GetItemGUID", &LuaGlobalFunctions::GetItemGUID);                                       // GetItemGUID(lowguid) - Generates GUID (uint64) string from item lowguid UNDOCUMENTED
     lua_register(L, "GetObjectGUID", &LuaGlobalFunctions::GetObjectGUID);                                   // GetObjectGUID(lowguid, entry) - Generates GUID (uint64) string from gameobject lowguid and entry UNDOCUMENTED
