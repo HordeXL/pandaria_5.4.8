@@ -345,10 +345,8 @@ namespace LuaPlayer
 
     int IsNeverVisible(lua_State* L, Player* player)
     {
-        return 0;
-        // TODO: fix this
-        // sEluna->Push(L, player->IsNeverVisible());
-        // return 1;
+        sEluna->Push(L, player->IsNeverVisible());
+        return 1;
     }
 
     int CanFlyInZone(lua_State* L, Player* player)
@@ -502,17 +500,15 @@ namespace LuaPlayer
 
     int ModifyArenaPoints(lua_State* L, Player* player)
     {
-        int32 amount = luaL_checkunsigned(L, 1);
-        // @TODO
-        //player->ModifyArenaPoints(amount);
+        int32 amount = luaL_checkinteger(L, 1);
+        player->ModifyCurrency(CURRENCY_TYPE_CONQUEST_POINTS, amount);
         return 0;
     }
 
     int ModifyHonorPoints(lua_State* L, Player* player)
     {
-        int32 amount = luaL_checkunsigned(L, 1);
-        // @TODO
-        //player->ModifyHonorPoints(amount);
+        int32 amount = luaL_checkinteger(L, 1);
+        player->ModifyCurrency(CURRENCY_TYPE_HONOR_POINTS, amount);
         return 0;
     }
 
@@ -621,8 +617,9 @@ namespace LuaPlayer
     int SetMovement(lua_State* L, Player* player)
     {
         int32 pType = luaL_checkinteger(L, 1);
-        // @TODO
-        //player->SetMovement((PlayerMovementType)pType);
+        // Player::SetMovement does not exist in MoP
+        // Use Unit::SetMovement instead if needed
+        luaL_error(L, "SetMovement is not implemented in MoP");
         return 0;
     }
 

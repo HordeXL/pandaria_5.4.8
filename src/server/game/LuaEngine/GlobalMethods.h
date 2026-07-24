@@ -677,57 +677,59 @@ namespace LuaGlobalFunctions
         return 0;
     }
 
-    // AddVendorItem(entry, itemId, maxcount, incrtime, extendedcost[, persist(bool)])
+    // AddVendorItem(entry, itemId, maxcount, incrtime, extendedcost, type[, persist(bool)])
     int AddVendorItem(lua_State* L)
     {
-        // @TODO
-        //uint32 entry = luaL_checkunsigned(L, 1);
-        //uint32 item = luaL_checkunsigned(L, 2);
-        //int maxcount = luaL_checkinteger(L, 3);
-        //uint32 incrtime = luaL_checkunsigned(L, 4);
-        //uint32 extendedcost = luaL_checkunsigned(L, 5);
-        //bool persist = luaL_optbool(L, 6, true);
-        //if (!sObjectMgr->GetCreatureTemplate(entry))
-        //{
-        //    luaL_error(L, "Couldn't find a creature with (ID: %d)!", entry);
-        //    return 0;
-        //}
+        uint32 entry = luaL_checkunsigned(L, 1);
+        uint32 item = luaL_checkunsigned(L, 2);
+        int32 maxcount = luaL_checkinteger(L, 3);
+        uint32 incrtime = luaL_checkunsigned(L, 4);
+        uint32 extendedcost = luaL_checkunsigned(L, 5);
+        uint8 type = luaL_optunsigned(L, 6, 0);
+        bool persist = luaL_optbool(L, 7, true);
+        if (!sObjectMgr->GetCreatureTemplate(entry))
+        {
+            luaL_error(L, "Couldn't find a creature with (ID: %d)!", entry);
+            return 0;
+        }
 
-        //if (!sObjectMgr->IsVendorItemValid(entry, item, maxcount, incrtime, extendedcost))
-        //    return 0;
-        //sObjectMgr->AddVendorItem(entry, item, maxcount, incrtime, extendedcost, persist);
+        sObjectMgr->AddVendorItem(entry, item, maxcount, incrtime, extendedcost, type, persist);
         return 0;
     }
 
-    // VendorRemoveItem(entry, item[, persist(bool)])
+    // VendorRemoveItem(entry, item, type[, persist(bool)])
     int VendorRemoveItem(lua_State* L)
     {
-        // @TODO
-        //uint32 entry = luaL_checkunsigned(L, 1);
-        //uint32 item = luaL_checkunsigned(L, 2);
-        //if (!sObjectMgr->GetCreatureTemplate(entry))
-        //{
-        //    luaL_error(L, "Couldn't find a creature with (ID: %d)!", entry);
-        //    return 0;
-        //}
+        uint32 entry = luaL_checkunsigned(L, 1);
+        uint32 item = luaL_checkunsigned(L, 2);
+        uint8 type = luaL_optunsigned(L, 3, 0);
+        bool persist = luaL_optbool(L, 4, true);
+        if (!sObjectMgr->GetCreatureTemplate(entry))
+        {
+            luaL_error(L, "Couldn't find a creature with (ID: %d)!", entry);
+            return 0;
+        }
 
-        //sObjectMgr->RemoveVendorItem(entry, item);
+        sObjectMgr->RemoveVendorItem(entry, item, type, persist);
         return 0;
     }
 
-    // VendorRemoveAllItems(entry, persist(bool))
+    // VendorRemoveAllItems(entry, type[, persist(bool)])
     int VendorRemoveAllItems(lua_State* L)
     {
-        //@TODO
-        //uint32 entry = luaL_checkunsigned(L, 1);
+        uint32 entry = luaL_checkunsigned(L, 1);
+        uint8 type = luaL_optunsigned(L, 2, 0);
+        bool persist = luaL_optbool(L, 3, true);
 
-        //VendorItemData const* items = sObjectMgr->GetNpcVendorItemList(entry);
-        //if (!items || items->Empty())
-        //    return 0;
+        VendorItemData const* items = sObjectMgr->GetNpcVendorItemList(entry);
+        if (!items || items->Empty())
+            return 0;
 
-        //VendorItemList const itemlist = items->m_items;
-        //for (VendorItemList::const_iterator itr = itemlist.begin(); itr != itemlist.end(); ++itr)
-        //    sObjectMgr->RemoveVendorItem(entry, (*itr)->item);
+        for (uint32 i = 0; i < items->GetItemCount(); ++i)
+        {
+            if (VendorItem const* item = items->GetItem(i))
+                sObjectMgr->RemoveVendorItem(entry, item->item, type, persist);
+        }
         return 0;
     }
 
@@ -744,46 +746,45 @@ namespace LuaGlobalFunctions
     // Ban(banMode(integer), nameOrIP(string), duration(string), reason(string), player(whoBanned))
     int Ban(lua_State* L)
     {
-        //@TODO
-        //int banMode = luaL_checkint(L, 1);
-        //std::string nameOrIP = luaL_checkstring(L, 2);
-        //uint32 duration = luaL_checkunsigned(L, 3);
-        //const char* reason = luaL_checkstring(L, 4);
-        //Player* whoBanned = sEluna->CHECK_PLAYER(L, 5);
-        //if (!whoBanned)
-        //    return 0;
+        int banMode = luaL_checkint(L, 1);
+        std::string nameOrIP = luaL_checkstring(L, 2);
+        std::string duration = luaL_checkstring(L, 3);
+        const char* reason = luaL_checkstring(L, 4);
+        Player* whoBanned = sEluna->CHECK_PLAYER(L, 5);
+        if (!whoBanned)
+            return 0;
 
-        //switch (banMode)
-        //{
-        //    case BAN_ACCOUNT:
-        //        if (!AccountMgr::normalizeString(nameOrIP))
-        //            return 0;
-        //        break;
-        //    case BAN_CHARACTER:
-        //        if (!normalizePlayerName(nameOrIP))
-        //            return 0;
-        //        break;
-        //    case BAN_IP:
-        //        if (!IsIPAddress(nameOrIP.c_str()))
-        //            return 0;
-        //        break;
-        //    default:
-        //        return 0;
-        //}
+        switch (banMode)
+        {
+            case BAN_ACCOUNT:
+                if (!AccountMgr::normalizeString(nameOrIP))
+                    return 0;
+                break;
+            case BAN_CHARACTER:
+                if (!normalizePlayerName(nameOrIP))
+                    return 0;
+                break;
+            case BAN_IP:
+                if (!IsIPAddress(nameOrIP.c_str()))
+                    return 0;
+                break;
+            default:
+                return 0;
+        }
 
-        //switch (sWorld->BanAccount((BanMode)banMode, nameOrIP, duration, reason, whoBanned->GetSession() ? whoBanned->GetName() : ""))
-        //{
-        //    case BAN_SUCCESS:
-        //        if (duration > 0)
-        //            ChatHandler(whoBanned->GetSession()).PSendSysMessage(LANG_BAN_YOUBANNED, nameOrIP.c_str(), secsToTimeString(duration, true).c_str(), reason);
-        //        else
-        //            ChatHandler(whoBanned->GetSession()).PSendSysMessage(LANG_BAN_YOUPERMBANNED, nameOrIP.c_str(), reason);
-        //        break;
-        //    case BAN_SYNTAX_ERROR:
-        //        return 0;
-        //    case BAN_NOTFOUND:
-        //        return 0;
-        //}
+        switch (sWorld->BanAccount((BanMode)banMode, nameOrIP, duration, reason, whoBanned->GetSession() ? whoBanned->GetName() : ""))
+        {
+            case BAN_SUCCESS:
+                if (duration != "0" && duration != "")
+                    ChatHandler(whoBanned->GetSession()).PSendSysMessage(LANG_BAN_YOUBANNED, nameOrIP.c_str(), secsToTimeString(atol(duration.c_str()), true).c_str(), reason);
+                else
+                    ChatHandler(whoBanned->GetSession()).PSendSysMessage(LANG_BAN_YOUPERMBANNED, nameOrIP.c_str(), reason);
+                break;
+            case BAN_SYNTAX_ERROR:
+                return 0;
+            case BAN_NOTFOUND:
+                return 0;
+        }
         return 0;
     }
 

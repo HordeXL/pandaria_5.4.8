@@ -471,7 +471,7 @@ ElunaRegister<Player> PlayerMethods[] =
     {"CanUninviteFromGroup", &LuaPlayer::CanUninviteFromGroup},                                               // :CanUninviteFromGroup() - Returns true if the player can uninvite from group
     {"IsRested", &LuaPlayer::IsRested},                     // :IsRested() - Returns true if the player is rested
     // {"CanFlyInZone", &LuaPlayer::CanFlyInZone},           // :CanFlyInZone(mapid, zone) - Returns true if the player can fly in the area
-    // {"IsNeverVisible", &LuaPlayer::IsNeverVisible},       // :IsNeverVisible() - Returns true if the player is never visible
+    {"IsNeverVisible", &LuaPlayer::IsNeverVisible},       // :IsNeverVisible() - Returns true if the player is never visible
     {"IsVisibleForPlayer", &LuaPlayer::IsVisibleForPlayer}, // :IsVisibleForPlayer(player) - Returns true if the player is visible for the target player
     // {"IsUsingLfg", &LuaPlayer::IsUsingLfg},               // :IsUsingLfg() - Returns true if the player is using LFG
     {"HasQuestForItem", &LuaPlayer::HasQuestForItem},       // :HasQuestForItem(entry) - Returns true if the player has the quest for the item
