@@ -36,6 +36,17 @@
 #include "ScriptMgr.h"
 #include "ChatLink.h"
 
+extern void StartEluna(bool restart);
+
+static bool HandleReloadElunaCommand(ChatHandler* handler, char const* /*args*/)
+{
+    TC_LOG_INFO("server.loading", "[Eluna]: Reloading Lua Engine via GM command...");
+    handler->SendSysMessage("Reloading Eluna Lua Engine...");
+    StartEluna(true);
+    handler->SendSysMessage("Eluna Lua Engine reloaded.");
+    return true;
+}
+
 bool ChatHandler::load_command_table = true;
 
 std::vector<ChatCommand> const& ChatHandler::getCommandTable()
@@ -48,6 +59,33 @@ std::vector<ChatCommand> const& ChatHandler::getCommandTable()
 
         std::vector<ChatCommand> cmds = sScriptMgr->GetChatCommands();
         commandTableCache.swap(cmds);
+
+        // Register .reload eluna command
+        bool hasReloadEluna = false;
+        for (auto const& cmd : commandTableCache)
+            if (strcmp(cmd.Name, "reload") == 0)
+                for (auto const& sub : cmd.ChildCommands)
+                    if (strcmp(sub.Name, "eluna") == 0)
+                        hasReloadEluna = true;
+
+        if (!hasReloadEluna)
+        {
+            for (auto& cmd : commandTableCache)
+            {
+                if (strcmp(cmd.Name, "reload") == 0)
+                {
+                    cmd.ChildCommands.push_back(ChatCommand("eluna", SEC_GAMEMASTER, true, &HandleReloadElunaCommand, "Reloads Eluna Lua Engine."));
+                    hasReloadEluna = true;
+                    break;
+                }
+            }
+        }
+        if (!hasReloadEluna)
+        {
+            ChatCommand reloadCmd("reload", SEC_GAMEMASTER, true, nullptr);
+            reloadCmd.ChildCommands.push_back(ChatCommand("eluna", SEC_GAMEMASTER, true, &HandleReloadElunaCommand, "Reloads Eluna Lua Engine."));
+            commandTableCache.push_back(reloadCmd);
+        }
 
         PreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_SEL_COMMANDS);
         PreparedQueryResult result = WorldDatabase.Query(stmt);

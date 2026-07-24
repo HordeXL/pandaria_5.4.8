@@ -711,3 +711,5 @@ uint32 LuaTaxiMgr::AddPath(std::list<TaxiPathNodeEntry> nodes, uint32 mountA, ui
     */
     return 0;
 }
+
+

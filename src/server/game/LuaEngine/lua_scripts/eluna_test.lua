@@ -1,6 +1,7 @@
 -- ============================================================
 -- Eluna 修复验证测试脚本
--- 放到 lua_scripts/ 目录后，游戏内用 .reload eluna 加载
+-- 放到 lua_scripts/ 目录后，重启服务器自动加载
+-- 重新加载脚本: .reload eluna (需管理员权限)
 -- ============================================================
 
 local TEST_RESULTS = {}
@@ -353,4 +354,4 @@ local function OnStartup()
 end
 RegisterServerEvent(1, OnStartup)
 
-print("Eluna 测试脚本已加载, 重启服务器或 .reload eluna 自动运行测试")
+print("Eluna 测试脚本已加载, .reload eluna 可重新加载")
