@@ -189,6 +189,8 @@ class CreatureAI : public UnitAI
         virtual void GetVehicleExitPosition(Vehicle* vehicle, int8 seatId, Position& pos) { }
 
         virtual void OnSpellClick(Unit* /*clicker*/, bool& /*result*/) { }
+        // Called when the creature is possessed or unpossessed (by HandleModPossess)
+        virtual void OnPossess(bool /*apply*/) { }
 
         virtual bool CanSeeAlways(WorldObject const* /*obj*/) { return false; }
 

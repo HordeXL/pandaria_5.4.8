@@ -1426,10 +1426,9 @@ struct HookMgr::ElunaCreatureAI : ScriptedAI
         sEluna->ExecuteCall(4, 0);
     }
 
-    // Called when AI is temporarily replaced or put back when possess is applied or removed
-    void OnPossess(bool apply)
+    void OnPossess(bool apply) override
     {
-        ScriptedAI::OnPossess(apply);
+        CreatureAI::OnPossess(apply);
         int bind = sEluna->CreatureEventBindings->GetBind(me->GetEntry(), CREATURE_EVENT_ON_POSSESS);
         if (!bind)
             return;
@@ -1653,7 +1652,6 @@ struct HookMgr::ElunaCreatureAI : ScriptedAI
 
     void OnSpellClick(Unit* clicker, bool& result) override
     {
-        /*
         ScriptedAI::OnSpellClick(clicker, result);
         int bind = sEluna->CreatureEventBindings->GetBind(me->GetEntry(), CREATURE_EVENT_ON_SPELL_CLICK);
         if (!bind)
@@ -1664,7 +1662,6 @@ struct HookMgr::ElunaCreatureAI : ScriptedAI
         sEluna->Push(sEluna->L, clicker);
         sEluna->Push(sEluna->L, result);
         sEluna->ExecuteCall(4, 0);
-        */
     }
 
     void MoveInLineOfSight(Unit* who) override
@@ -1998,4 +1995,5 @@ GameObjectAI* HookMgr::GetAI(GameObject* gameObject)
 void AddElunaScripts()
 {
     new HookMgr::ElunaWorldAI();
+    new ElunaGameObjectScript();
 }

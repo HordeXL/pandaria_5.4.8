@@ -197,7 +197,7 @@ struct ScriptedAI : public CreatureAI
     { }
 
     // Called when AI is temporarily replaced or put back when possess is applied or removed
-    void OnPossess(bool /*apply*/)
+    void OnPossess(bool /*apply*/) override
     { }
 
     // *************

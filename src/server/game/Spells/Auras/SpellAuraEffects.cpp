@@ -3113,6 +3113,9 @@ void AuraEffect::HandleModPossess(AuraApplication const* aurApp, uint8 mode, boo
         target->SetCharmedBy(caster, CHARM_TYPE_POSSESS, aurApp);
     else
         target->RemoveCharmedBy(caster);
+
+    if (Creature* creatureTarget = target->ToCreature())
+        creatureTarget->AI()->OnPossess(apply);
 }
 
 void AuraEffect::HandleModFixateTarget(AuraApplication const* aurApp, uint8 mode, bool apply) const

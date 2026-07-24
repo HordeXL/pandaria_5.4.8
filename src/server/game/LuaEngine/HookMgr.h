@@ -409,6 +409,22 @@ public:
     {
         return sHookMgr->GetAI(gameObject);
     }
+    void OnDestroyed(GameObject* go, Player* player) override
+    {
+        sHookMgr->OnDestroyed(go, player);
+    }
+    void OnDamaged(GameObject* go, Player* player) override
+    {
+        sHookMgr->OnDamaged(go, player);
+    }
+    void OnLootStateChanged(GameObject* go, uint32 state, Unit* unit) override
+    {
+        sHookMgr->OnLootStateChanged(go, state, unit);
+    }
+    void OnGameObjectStateChanged(GameObject* go, uint32 state) override
+    {
+        sHookMgr->OnGameObjectStateChanged(go, state);
+    }
 };
 
 void AddElunaScripts();

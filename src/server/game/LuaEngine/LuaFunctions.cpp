@@ -282,7 +282,7 @@ ElunaRegister<Unit> UnitMethods[] =
     {"RegisterEvent", &LuaUnit::RegisterEvent},             // :RegisterEvent(function, delay, calls)
     {"RemoveEventById", &LuaUnit::RemoveEventById},         // :RemoveEventById(eventID)
     {"RemoveEvents", &LuaUnit::RemoveEvents},               // :RemoveEvents()
-    //{"AddAura", &LuaUnit::AddAura},                       // :AddAura(spellId, target) - Adds an aura to the specified target
+    {"AddAura", &LuaUnit::AddAura},                       // :AddAura(spellId, target) - Adds an aura to the specified target
     {"RemoveAura", &LuaUnit::RemoveAura},                   // :RemoveAura(spellId[, casterGUID]) - Removes an aura from the unit by the spellId, casterGUID(Original caster) is optional
     {"RemoveAllAuras", &LuaUnit::RemoveAllAuras},           // :RemoveAllAuras() - Removes all the unit's auras
     {"ClearInCombat", &LuaUnit::ClearInCombat},             // :ClearInCombat() - Clears the unit's combat list (unit will be out of combat), resets the timer to 0, etc

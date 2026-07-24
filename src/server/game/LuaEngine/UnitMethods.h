@@ -395,29 +395,24 @@ namespace LuaUnit
 
     int SendChatMessageToPlayer(lua_State* L, Unit* unit)
     {
-        //@TODO
-        //uint8 type = luaL_checkunsigned(L, 1);
-        //uint32 lang = luaL_checkunsigned(L, 2);
-        //const char* msg = luaL_checkstring(L, 3);
-        //Player* target = sEluna->CHECK_PLAYER(L, 4);
-        //if (!target || type == CHAT_MSG_CHANNEL)
-        //    return 0;
+        uint8 type = luaL_checkunsigned(L, 1);
+        uint32 lang = luaL_checkunsigned(L, 2);
+        const char* msg = luaL_checkstring(L, 3);
+        Player* target = sEluna->CHECK_PLAYER(L, 4);
+        if (!target || type == CHAT_MSG_CHANNEL)
+            return 0;
 
-        //WorldPacket* data = new WorldPacket();
-        //uint32 messageLength = (uint32)strlen(msg) + 1;
-        //data->Initialize(SMSG_MESSAGECHAT, 100);
-        //*data << (uint8)type;
-        //*data << lang;
-        //*data << unit->GetGUIDLow();
-        //*data << uint32(0);
-        //*data << unit->GetGUIDLow();
-        //*data << messageLength;
-        //*data << msg;
-        //if (unit->ToPlayer() && type != CHAT_MSG_WHISPER_INFORM && type != CHAT_MSG_DND && type != CHAT_MSG_AFK)
-        //    *data << uint8(unit->ToPlayer()->GetChatTag());
-        //else
-        //    *data << uint8(0);
-        //target->GetSession()->SendPacket(data);
+        WorldPacket data(SMSG_MESSAGECHAT, 200);
+        uint32 messageLength = (uint32)strlen(msg) + 1;
+        data << uint8(type);
+        data << uint32(lang);
+        data << uint64(unit->GetGUID());
+        data << uint32(0); // unused
+        data << uint64(unit->GetGUID());
+        data << uint32(messageLength);
+        data << msg;
+        data << uint8(0); // chat tag
+        target->GetSession()->SendPacket(&data);
         return 0;
     }
 
@@ -1184,9 +1179,8 @@ namespace LuaUnit
 
     int GetAura(lua_State* L, Unit* unit)
     {
-        //@TODO
-        //uint32 spellID = luaL_checkunsigned(L, 1);
-        //sEluna->Push(L, unit->GetAura(spellID));
+        uint32 spellID = luaL_checkunsigned(L, 1);
+        sEluna->Push(L, unit->GetAura(spellID));
         return 1;
     }
 
@@ -1235,12 +1229,11 @@ namespace LuaUnit
 
     int AddAura(lua_State* L, Unit* unit)
     {
-        //@TODO
-        //uint32 spellId = luaL_checkunsigned(L, 1);
-        //Unit* target = sEluna->CHECK_UNIT(L, 2);
-        //if (!target)
-        //    return 0;
-        //sEluna->Push(L, unit->AddAura(spellId, target));
+        uint32 spellId = luaL_checkunsigned(L, 1);
+        Unit* target = sEluna->CHECK_UNIT(L, 2);
+        if (!target)
+            return 0;
+        sEluna->Push(L, unit->AddAura(spellId, target));
         return 1;
     }
 
@@ -1323,59 +1316,55 @@ namespace LuaUnit
         return 1;
     }
 
-    int GetFriendlyUnitsInRange(lua_State* L, Unit* unit) // error in compile TODO
+    int GetFriendlyUnitsInRange(lua_State* L, Unit* unit)
     {
-        // float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
+        float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
 
-        // UnitList list;
-        // //WoWSource::AnyFriendlyUnitInObjectRangeCheck checker(unit, unit, range);
-        // //WoWSource::UnitListSearcher<WoWSource::AnyFriendlyUnitInObjectRangeCheck> searcher(unit, list, checker);
-        // Trinity::AnyFriendlyUnitInObjectRangeCheck u_check(unit, unit, range);
-        // Trinity::UnitListSearcher<Trinity::AnyFriendlyUnitInObjectRangeCheck> searcher(unit, list, u_check);
-        // unit->VisitNearbyObject(range, searcher);
-        // Eluna::ObjectGUIDCheck guidCheck(unit->GetGUID());
-        // list.remove_if (guidCheck);
+        UnitList list;
+        Trinity::AnyFriendlyUnitInObjectRangeCheck u_check(unit, unit, range);
+        Trinity::UnitListSearcher<Trinity::AnyFriendlyUnitInObjectRangeCheck> searcher(unit, list, u_check);
+        unit->VisitNearbyObject(range, searcher);
+        Eluna::ObjectGUIDCheck guidCheck(unit->GetGUID());
+        list.remove_if (guidCheck);
 
-        // lua_newtable(L);
-        // int tbl = lua_gettop(L);
-        // uint32 i = 0;
+        lua_newtable(L);
+        int tbl = lua_gettop(L);
+        uint32 i = 0;
 
-        // for (UnitList::const_iterator it = list.begin(); it != list.end(); ++it)
-        // {
-        //     sEluna->Push(L, ++i);
-        //     sEluna->Push(L, *it);
-        //     lua_settable(L, tbl);
-        // }
+        for (UnitList::const_iterator it = list.begin(); it != list.end(); ++it)
+        {
+            sEluna->Push(L, ++i);
+            sEluna->Push(L, *it);
+            lua_settable(L, tbl);
+        }
 
-        // lua_settop(L, tbl);
+        lua_settop(L, tbl);
         return 1;
     }
 
-    int GetUnfriendlyUnitsInRange(lua_State* L, Unit* unit) // error in compile TODO
+    int GetUnfriendlyUnitsInRange(lua_State* L, Unit* unit)
     {
-        // float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
+        float range = luaL_optnumber(L, 1, SIZE_OF_GRIDS);
 
-        // UnitList list;
-        // //WoWSource::AnyUnfriendlyUnitInObjectRangeCheck checker(unit, unit, range);
-        // //WoWSource::UnitListSearcher<WoWSource::AnyUnfriendlyUnitInObjectRangeCheck> searcher(unit, list, checker);
-        // Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(unit, unit, range);
-        // Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(unit, list, u_check);
-        // unit->VisitNearbyObject(range, searcher);
-        // Eluna::ObjectGUIDCheck guidCheck(unit->GetGUID());
-        // list.remove_if (guidCheck);
+        UnitList list;
+        Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(unit, unit, range);
+        Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(unit, list, u_check);
+        unit->VisitNearbyObject(range, searcher);
+        Eluna::ObjectGUIDCheck guidCheck(unit->GetGUID());
+        list.remove_if (guidCheck);
 
-        // lua_newtable(L);
-        // int tbl = lua_gettop(L);
-        // uint32 i = 0;
+        lua_newtable(L);
+        int tbl = lua_gettop(L);
+        uint32 i = 0;
 
-        // for (UnitList::const_iterator it = list.begin(); it != list.end(); ++it)
-        // {
-        //     sEluna->Push(L, ++i);
-        //     sEluna->Push(L, *it);
-        //     lua_settable(L, tbl);
-        // }
+        for (UnitList::const_iterator it = list.begin(); it != list.end(); ++it)
+        {
+            sEluna->Push(L, ++i);
+            sEluna->Push(L, *it);
+            lua_settable(L, tbl);
+        }
 
-        // lua_settop(L, tbl);
+        lua_settop(L, tbl);
         return 1;
     }
 
