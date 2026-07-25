@@ -286,6 +286,7 @@ struct EventMgr
     // Remove all timed events
     void RemoveEvents()
     {
+        GlobalEvents.KillAllEvents(true);
         for (ProcessorMap::iterator it = Processors.begin(); it != Processors.end(); ++it)
             it->second.KillAllEvents(true);
         Processors.clear();
