@@ -6,6 +6,7 @@
 
 #include "PlayerMethods.h"
 #include "Includes.h"
+#include "Mail.h"
 
 namespace LuaPlayer
 {
@@ -146,6 +147,32 @@ namespace LuaPlayer
         GameObject* object = sEluna->CHECK_GAMEOBJECT(L, 1);
         if (!object)
             return 0;
+        return 0;
+    }
+
+    int SendMail(lua_State* L, Player* player)
+    {
+        std::string receiver = luaL_checkstring(L, 1);
+        std::string subject = luaL_checkstring(L, 2);
+        std::string body = luaL_checkstring(L, 3);
+        uint32 money = luaL_optunsigned(L, 4, 0);
+
+        // Find receiver by name
+        uint64 receiverGuid = sObjectMgr->GetPlayerGUIDByName(receiver);
+        if (!receiverGuid)
+            return 0;
+
+        // Create mail draft
+        MailDraft draft(subject, body);
+        if (money > 0)
+            draft.AddMoney(money);
+
+        // Send mail
+        MailReceiver mailReceiver(GUID_LOPART(receiverGuid));
+        MailSender mailSender(MAIL_NORMAL, 0, MAIL_STATIONERY_GM);
+        SQLTransaction trans = CharacterDatabase.BeginTransaction();
+        draft.SendMailTo(trans, mailReceiver, mailSender);
+        CharacterDatabase.CommitTransaction(trans);
         return 0;
     }
 
@@ -831,16 +858,14 @@ namespace LuaPlayer
 
     int ResetTalentsCost(lua_State* L, Player* player)
     {
-        // @TODO
-        //sEluna->Push(L, player->resetTalentsCost());
+        sEluna->Push(L, player->GetNextResetTalentsCost());
         return 1;
     }
 
     int ResetTalents(lua_State* L, Player* player)
     {
         bool no_cost = luaL_optbool(L, 1, false);
-        // @TODO
-        //player->resetTalents(no_cost);
+        player->ResetTalents(no_cost);
         player->SendTalentsInfoData();
         return 0;
     }
@@ -1202,8 +1227,7 @@ namespace LuaPlayer
 
     int GetPhaseMaskForSpawn(lua_State* L, Player* player)
     {
-        // @TODO
-        //sEluna->Push(L, player->GetPhaseMaskForSpawn());
+        sEluna->Push(L, player->GetPhaseMgr().GetPhaseMaskForSpawn());
         return 1;
     }
 
@@ -1226,14 +1250,13 @@ namespace LuaPlayer
 
     int RemovePet(lua_State* L, Player* player)
     {
-        // @TODO
-        //int mode = luaL_optint(L, 1, PET_SAVE_AS_DELETED);
-        //bool returnreagent = luaL_optbool(L, 1, false);
+        PetRemoveMode mode = (PetRemoveMode)luaL_optinteger(L, 1, PET_REMOVE_DISMISS);
+        bool returnReagent = luaL_optbool(L, 2, false);
 
-        //if (!player->GetPet())
-        //    return 0;
+        if (!player->GetPet())
+            return 0;
 
-        //player->RemovePet(player->GetPet(), (PetSaveMode)mode, returnreagent);
+        player->RemovePet(mode, returnReagent ? PET_REMOVE_FLAG_RETURN_REAGENT : PET_REMOVE_FLAG_NONE);
         return 0;
     }
 
@@ -1378,6 +1401,12 @@ namespace LuaPlayer
         bool on = luaL_optbool(L, 1, true);
 
         player->SetPvPDeath(on);
+        return 0;
+    }
+
+    int TogglePVP(lua_State* L, Player* player)
+    {
+        player->UpdatePvP(!player->IsPvP());
         return 0;
     }
 
@@ -1545,8 +1574,7 @@ namespace LuaPlayer
 
     int GetArenaPoints(lua_State* L, Player* player)
     {
-        // @TODO
-        //sEluna->Push(L, player->GetArenaPoints());
+        sEluna->Push(L, player->GetCurrency(CURRENCY_TYPE_CONQUEST_POINTS, false));
         return 1;
     }
 
@@ -1664,17 +1692,15 @@ namespace LuaPlayer
 
     int SetArenaPoints(lua_State* L, Player* player)
     {
-        // @TODO
-        //uint32 arenaP = luaL_checkunsigned(L, 1);
-        //player->SetArenaPoints(arenaP);
+        int32 arenaP = luaL_checkinteger(L, 1);
+        player->SetCurrency(CURRENCY_TYPE_CONQUEST_POINTS, arenaP);
         return 0;
     }
 
     int SetHonorPoints(lua_State* L, Player* player)
     {
-        // @TODO
-        //uint32 honorP = luaL_checkunsigned(L, 1);
-        //player->SetHonorPoints(honorP);
+        int32 honorP = luaL_checkinteger(L, 1);
+        player->SetCurrency(CURRENCY_TYPE_HONOR_POINTS, honorP);
         return 0;
     }
 
@@ -1782,12 +1808,11 @@ namespace LuaPlayer
 
     int IsInArenaTeam(lua_State* L, Player* player)
     {
-        // @TODO
-        //uint32 type = luaL_checkunsigned(L, 1);
-        //if (type < MAX_ARENA_SLOT && player->GetArenaTeamId(type))
-        //    sEluna->Push(L, true);
-        //else
-        //    sEluna->Push(L, false);
+        uint32 type = luaL_checkunsigned(L, 1);
+        if (type < PVP_SLOT_MAX && sRatedPvpMgr->GetInfo(RatedPvpSlot(type), player->GetGUID()))
+            sEluna->Push(L, true);
+        else
+            sEluna->Push(L, false);
         return 1;
     }
 
@@ -1941,10 +1966,9 @@ namespace LuaPlayer
 
     int SendAreaTriggerMessage(lua_State* L, Player* player)
     {
-        // @TODO
-        //const char* msg = luaL_checkstring(L, 1);
-        //if (std::string(msg).length() > 0)
-        //    player->GetSession()->SendAreaTriggerMessage(msg);
+        const char* msg = luaL_checkstring(L, 1);
+        if (std::string(msg).length() > 0)
+            player->GetSession()->SendNotification(msg);
         return 0;
     }
 

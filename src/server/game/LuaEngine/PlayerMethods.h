@@ -41,6 +41,7 @@ namespace LuaPlayer
     int SendAuctionMenu(lua_State* L, Player* player);
 
     int SendMailMenu(lua_State* L, Player* player);
+    int SendMail(lua_State* L, Player* player);
 
     int SendTaxiMenu(lua_State* L, Player* player);
 
@@ -331,6 +332,7 @@ namespace LuaPlayer
     int SetAcceptWhispers(lua_State* L, Player* player);
 
     int SetPvPDeath(lua_State* L, Player* player);
+    int TogglePVP(lua_State* L, Player* player);
 
     int SetGMVisible(lua_State* L, Player* player);
 

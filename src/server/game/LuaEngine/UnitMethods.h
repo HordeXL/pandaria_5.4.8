@@ -595,7 +595,6 @@ namespace LuaUnit
 
     int MoveTo(lua_State* L, Unit* unit)
     {
-        //@TODO
         float id = luaL_checknumber(L, 1);
         float x = luaL_checknumber(L, 2);
         float y = luaL_checknumber(L, 3);
@@ -1077,7 +1076,6 @@ namespace LuaUnit
 
     int SendUnitWhisper(lua_State* L, Unit* unit)
     {
-        //@TODO
         const char* msg = luaL_checkstring(L, 1);
         uint32 lang = luaL_checkunsigned(L, 2);
         ObjectGuid receiver(uint64(luaL_checknumber(L, 3)));
@@ -1091,7 +1089,6 @@ namespace LuaUnit
 
     int SendUnitEmote(lua_State* L, Unit* unit)
     {
-        //@TODO
         const char* msg = luaL_checkstring(L, 1);
         ObjectGuid receiver(uint64(luaL_checknumber(L, 2)));
         bool bossEmote = luaL_optbool(L, 3, false);
@@ -1106,7 +1103,6 @@ namespace LuaUnit
 
     int SendUnitSay(lua_State* L, Unit* unit)
     {
-        //@TODO
         const char* msg = luaL_checkstring(L, 1);
         uint32 language = luaL_checknumber(L, 2);
         ObjectGuid guid(uint64(luaL_checknumber(L, 3)));
@@ -1120,7 +1116,6 @@ namespace LuaUnit
 
     int SendUnitYell(lua_State* L, Unit* unit)
     {
-        //@TODO
         const char* msg = luaL_checkstring(L, 1);
         uint32 language = luaL_checknumber(L, 2);
         ObjectGuid guid(uint64(luaL_checknumber(L, 3)));

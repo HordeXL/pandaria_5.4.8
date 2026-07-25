@@ -239,14 +239,14 @@ namespace LuaItem
 
     int IsWeaponVellum(lua_State* L, Item* item)
     {
-        // @TODO
+        // @TODO - API item->IsWeaponVellum() does not exist in this codebase
         //sEluna->Push(L, item->IsWeaponVellum());
         return 1;
     }
 
     int IsArmorVellum(lua_State* L, Item* item)
     {
-        // @TODO
+        // @TODO - API item->IsArmorVellum() does not exist in this codebase
         //sEluna->Push(L, item->IsArmorVellum());
         return 1;
     }
@@ -447,7 +447,7 @@ namespace LuaItem
 
     int GetStatsCount(lua_State* L, Item* item)
     {
-        // @TODO
+        // @TODO - ItemTemplate::StatsCount does not exist in this codebase
         //sEluna->Push(L, item->GetTemplate()->StatsCount);
         return 1;
     }

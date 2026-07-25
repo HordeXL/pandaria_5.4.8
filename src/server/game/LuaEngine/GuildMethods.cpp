@@ -36,8 +36,7 @@ namespace LuaGuild
 
     int GetMemberCount(lua_State* L, Guild* guild)
     {
-        // @TODO
-        //sEluna->Push(L, guild->GetMemberSize());
+        sEluna->Push(L, guild->GetMembersCount());
         return 1;
     }
 

@@ -678,7 +678,7 @@ namespace LuaCreature
 
     int GetShieldBlockValue(lua_State* L, Creature* creature)
     {
-        //@TODO
+        // @TODO - creature->GetShieldBlockValue() does not exist in this codebase (only available on Player)
         //sEluna->Push(L, creature->GetShieldBlockValue());
         return 1;
     }

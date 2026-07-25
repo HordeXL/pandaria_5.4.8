@@ -115,7 +115,8 @@ namespace LuaVehicle
         if (!passenger)
             return 0;
 
-        //vehicle->RemovePendingEventsForPassenger(passenger); @TODO
+        // @TODO - Vehicle::RemovePendingEventsForPassenger() does not exist in this codebase
+        //vehicle->RemovePendingEventsForPassenger(passenger);
         return 0;
     }
 

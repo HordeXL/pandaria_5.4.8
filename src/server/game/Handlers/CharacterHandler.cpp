@@ -1324,7 +1324,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     pCurrChar->UpdatePromotionAuras();
 
     sScriptMgr->OnPlayerLogin(pCurrChar);
-    sHookMgr->OnLogin(pCurrChar);
+    //sHookMgr->OnLogin(pCurrChar);
 
     if (pCurrChar->HasAtLoginFlag(AT_LOGIN_POST_AUTOTRANSFER))
     {

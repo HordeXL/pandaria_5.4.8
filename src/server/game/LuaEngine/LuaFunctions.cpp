@@ -422,6 +422,7 @@ ElunaRegister<Player> PlayerMethods[] =
     {"SetTaxiCheat", &LuaPlayer::SetTaxiCheat},             // :SetTaxiCheat([on]) - Sets taxi cheat on or off
     {"SetGMVisible", &LuaPlayer::SetGMVisible},             // :SetGMVisible([on]) - Sets gm visibility on or off
     {"SetPvPDeath", &LuaPlayer::SetPvPDeath},               // :SetPvPDeath([on]) - Sets PvP death on or off
+    {"TogglePVP", &LuaPlayer::TogglePVP},                     // :TogglePVP() - Toggles player's PvP flag
     {"SetAcceptWhispers", &LuaPlayer::SetAcceptWhispers},   // :SetAcceptWhispers([on]) - Sets whisper accepting death on or off
     {"SetRestBonus", &LuaPlayer::SetRestBonus},             // :SetRestBonus(bonusrate) - Sets new restbonus rate
     {"SetRestFlag", &LuaPlayer::SetRestFlag},               // :SetRestFlag() - Sets rest flag
@@ -583,6 +584,7 @@ ElunaRegister<Player> PlayerMethods[] =
     {"RewardQuest", &LuaPlayer::RewardQuest},               // :RewardQuest(entry) - Gives quest rewards for the player
     {"SendAuctionMenu", &LuaPlayer::SendAuctionMenu},       // :SendAuctionMenu([creature, faction]) - Sends auction window to player. Auction house is sent by creature if provided. AH entry is searched with faction or creature's faction if provided
     {"SendMailMenu", &LuaPlayer::SendMailMenu},             // :SendMailMenu(object) - Sends mail window to player from gameobject
+    {"SendMail", &LuaPlayer::SendMail},                         // :SendMail(receiver, subject, body[, money]) - Sends mail to the specified player
     {"StartTaxi", &LuaPlayer::StartTaxi},                   // :StartTaxi(pathId) - player starts the given flight path
     {"GossipSendPOI", &LuaPlayer::GossipSendPOI},           // :GossipSendPOI(X, Y, Icon, Flags, Data, Name) - Sends a point of interest to the player
     {"GossipAddQuests", &LuaPlayer::GossipAddQuests},       // :GossipAddQuests(unit) - Adds unit's quests to player's gossip menu
