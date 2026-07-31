@@ -9,3 +9,4 @@ import_db.bat
 
 # CMake-generated module loader
 /modules/ModulesLoader.cpp
+/modules/mod_playerbots/src/Playerbots.h.bak
