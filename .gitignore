@@ -6,3 +6,6 @@ build
 /node_modules
 import_db.bat
 /.reasonix
+
+# CMake-generated module loader
+/modules/ModulesLoader.cpp

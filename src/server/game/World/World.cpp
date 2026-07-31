@@ -2728,6 +2728,7 @@ void World::Update(uint32 diff)
         CharacterDatabase.KeepAlive();
         LoginDatabase.KeepAlive();
         WorldDatabase.KeepAlive();
+        PlayerbotsDatabase.KeepAlive();
     }
 
     if (m_timers[WUPDATE_GUILDSAVE].Passed())

@@ -190,6 +190,7 @@ include_directories(
   ${ACE_INCLUDE_DIR}
   ${MYSQL_INCLUDE_DIR}
   ${OPENSSL_INCLUDE_DIR}
+  ${CMAKE_SOURCE_DIR}/modules
 )
 
 if (Boost_FOUND)

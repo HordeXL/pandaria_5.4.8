@@ -15,6 +15,8 @@
 * with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "CharacterHandler.h"
+
 #include "AccountMgr.h"
 #include "ArenaTeam.h"
 #include "Battleground.h"
@@ -49,25 +51,12 @@
 #include "ServiceMgr.h"
 #include "ServiceBoost.h"
 
-class LoginQueryHolder : public SQLQueryHolder
-{
-private:
-    uint32 m_accountId;
-    uint64 m_guid;
-public:
-    LoginQueryHolder(uint32 accountId, uint64 guid)
-        : m_accountId(accountId), m_guid(guid) { }
-    uint64 GetGuid() const { return m_guid; }
-    uint32 GetAccountId() const { return m_accountId; }
-    bool Initialize();
-};
-
 bool LoginQueryHolder::Initialize()
 {
     SetSize(MAX_PLAYER_LOGIN_QUERY);
 
     bool res = true;
-    uint32 lowGuid = GUID_LOPART(m_guid);
+    uint32 lowGuid = GUID_LOPART((uint64)m_guid);
 
     PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER);
     stmt->setUInt32(0, lowGuid);
@@ -951,7 +940,7 @@ void WorldSession::HandleLoadScreenOpcode(WorldPacket& recvPacket)
 
 void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
 {
-    uint64 playerGuid = holder->GetGuid();
+    ObjectGuid playerGuid = holder->GetGuid();
 
     Player* pCurrChar = new Player(this);
     // for send server info and strings (config)

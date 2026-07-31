@@ -18,6 +18,12 @@
 #ifndef SC_SCRIPTLOADER_H
 #define SC_SCRIPTLOADER_H
 
+#include "ScriptMgr.h"
+
+#ifdef PLAYERBOTS
+#include "ModulesLoader.h"
+#endif
+
 void AddScripts();
 
 #endif

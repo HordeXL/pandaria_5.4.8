@@ -111,3 +111,6 @@ void ByteBuffer::hexlike() const
     o << " ";
     TC_LOG_TRACE("network", "%s", o.str().c_str());
 }
+
+// Definition of static ObjectGuid::Empty
+ObjectGuid const ObjectGuid::Empty;

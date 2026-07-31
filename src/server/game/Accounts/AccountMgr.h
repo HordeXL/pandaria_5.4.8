@@ -19,6 +19,7 @@
 #define SF_ACCMGR_H
 
 #include <ace/Singleton.h>
+#include "Util.h"
 
 enum class AccountOpResult : uint8
 {

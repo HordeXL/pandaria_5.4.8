@@ -101,3 +101,8 @@ add_subdirectory(dep)
 
 # add core sources
 add_subdirectory(src)
+
+# add modules
+if( PLAYERBOTS )
+  add_subdirectory(modules)
+endif()

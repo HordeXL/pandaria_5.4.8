@@ -19,6 +19,7 @@
 #define RATED_PVP_H
 
 #include "Common.h"
+#include "Transaction.h"
 
 enum ArenaType : uint32;
 

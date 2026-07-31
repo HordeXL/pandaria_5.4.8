@@ -503,6 +503,27 @@ bool Master::_StartDB()
         return false;
     }
 
+    ///- Get playerbots database info from configuration file
+    dbString = sConfigMgr->GetStringDefault("PlayerbotsDatabaseInfo", "");
+    if (!dbString.empty())
+    {
+        asyncThreads = uint8(sConfigMgr->GetIntDefault("PlayerbotsDatabase.WorkerThreads", 1));
+        if (asyncThreads < 1 || asyncThreads > 32)
+        {
+            TC_LOG_ERROR("server.worldserver", "Playerbots database: invalid number of worker threads specified. "
+                "Please pick a value between 1 and 32.");
+            return false;
+        }
+
+        synchThreads = uint8(sConfigMgr->GetIntDefault("PlayerbotsDatabase.SynchThreads", 1));
+        ///- Initialise the playerbots database
+        if (!PlayerbotsDatabase.Open(dbString, asyncThreads, synchThreads))
+        {
+            TC_LOG_ERROR("server.worldserver", "Cannot connect to playerbots database %s", dbString.c_str());
+            return false;
+        }
+    }
+
     ///- Get the realm Id from the configuration file
     realmID = sConfigMgr->GetIntDefault("RealmID", 0);
     if (!realmID)

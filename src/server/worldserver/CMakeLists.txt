@@ -161,6 +161,7 @@ include_directories(
   ${ACE_INCLUDE_DIR}
   ${MYSQL_INCLUDE_DIR}
   ${OPENSSL_INCLUDE_DIR}
+  ${CMAKE_SOURCE_DIR}/modules
 )
 
 if (Boost_FOUND)
@@ -194,6 +195,7 @@ target_link_libraries(worldserver
   g3dlib
   gsoap
   Detour
+  modules
   ${JEMALLOC_LIBRARY}
   ${READLINE_LIBRARY}
   ${TERMCAP_LIBRARY}
@@ -211,6 +213,12 @@ if( WIN32 )
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/worldserver.conf.dist ${CMAKE_BINARY_DIR}/bin/$(ConfigurationName)/
     )
+    if( PLAYERBOTS )
+      add_custom_command(TARGET worldserver
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/modules/mod_playerbots/config/playerbots.conf.dist ${CMAKE_BINARY_DIR}/bin/$(ConfigurationName)/
+      )
+    endif()
   elseif ( MINGW )
     add_custom_command(TARGET worldserver
       POST_BUILD

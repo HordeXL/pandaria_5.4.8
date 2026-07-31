@@ -210,7 +210,7 @@ class CharacterCreateInfo
     friend class WorldSession;
     friend class Player;
 
-    protected:
+    public:
         CharacterCreateInfo(std::string const& name, uint8 race, uint8 cclass, uint8 gender, uint8 skin, uint8 face, uint8 hairStyle, uint8 hairColor, uint8 facialHair, uint8 outfitId,
         WorldPacket& data) : Name(name), Race(race), Class(cclass), Gender(gender), Skin(skin), Face(face), HairStyle(hairStyle), HairColor(hairColor), FacialHair(facialHair),
         OutfitId(outfitId), Data(data), CharCount(0)
@@ -334,6 +334,11 @@ class WorldSession : public Schedulable
 
         void QueuePacket(WorldPacket* new_packet);
         bool Update(uint32 diff, PacketFilter& updater);
+
+        // PlayerBot support
+        bool IsBot() const { return _isBot; }
+        void SetBot(bool bot) { _isBot = bot; }
+        ACE_Based::LockedQueue<WorldPacket*, ACE_Thread_Mutex>& GetPacketQueue() { return _recvQueue; }
 
         /// Handle the authentication waiting queue (to be completed)
         void SendAuthWaitQue(uint32 position);
@@ -1252,6 +1257,7 @@ class WorldSession : public Schedulable
         uint32 recruiterId;
         bool isRecruiter;
         bool m_hasBoost;
+        bool _isBot;
         ACE_Based::LockedQueue<WorldPacket*, ACE_Thread_Mutex> _recvQueue;
         time_t timeLastWhoCommand;
         z_stream_s* _compressionStream;

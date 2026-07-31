@@ -46,6 +46,13 @@ else()
   message("* Build with scripts     : No")
 endif()
 
+if( PLAYERBOTS )
+  message("* Build with PlayerBots  : Yes")
+  add_definitions(-DPLAYERBOTS)
+else()
+  message("* Build with PlayerBots  : No  (default)")
+endif()
+
 if( TOOLS )
   message("* Build map/vmap tools   : Yes")
   add_definitions(-DNO_CORE_FUNCS)

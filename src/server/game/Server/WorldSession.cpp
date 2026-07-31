@@ -125,6 +125,7 @@ WorldSession::WorldSession(uint32 id, WorldSocket* sock, AccountTypes sec, uint8
     recruiterId(recruiter),
     isRecruiter(isARecruiter),
     m_hasBoost(hasBoost),
+    _isBot(false),
     timeLastWhoCommand(0), m_flags(flags),
     m_currentVendorEntry(0)
 {

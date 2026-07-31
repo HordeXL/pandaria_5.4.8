@@ -291,6 +291,7 @@ class Group
         bool IsCreated()   const;
         bool IsFlex() const { return m_flex; }
         uint64 GetLeaderGUID() const;
+        ObjectGuid GetTargetIcon(uint8 index) const { return ObjectGuid(m_targetIcons[index]); }
         uint64 GetGUID() const;
         uint32 GetLowGUID() const;
         const char * GetLeaderName() const;

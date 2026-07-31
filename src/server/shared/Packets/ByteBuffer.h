@@ -93,10 +93,16 @@ public:
 #endif
     }
 
-    operator uint64()
+    operator uint64() const
     {
         return _data.u64;
     }
+
+    bool IsEmpty() const { return _data.u64 == UI64LIT(0); }
+    uint64 GetRawValue() const { return _data.u64; }
+    uint32 GetCounter() const { return (uint32)(_data.u64 & UI64LIT(0xFFFFFFFF)); }
+
+    static ObjectGuid const Empty;
 
     ObjectGuid& operator=(uint64 guid)
     {
@@ -118,6 +124,18 @@ private:
     } _data;
 
 };
+
+namespace std
+{
+    template <>
+    struct hash<ObjectGuid>
+    {
+        size_t operator()(ObjectGuid const& guid) const
+        {
+            return static_cast<size_t>(guid.GetRawValue());
+        }
+    };
+}
 class ByteBuffer
 {
 public:

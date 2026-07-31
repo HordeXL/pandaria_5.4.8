@@ -2170,4 +2170,7 @@ void AddScripts()
     AddOutdoorPvPScripts();
     AddCustomScripts();
 #endif
+#ifdef PLAYERBOTS
+    AddModulesScripts();
+#endif
 }
