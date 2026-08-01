@@ -275,7 +275,7 @@ void WorldSession::SendPacket(WorldPacket const* packet, bool forced /*= false*/
     }
 #endif                                                      // !TRINITY_DEBUG
 
-    if (m_Socket->SendPacket(*packet) == -1)
+    if (m_Socket && m_Socket->SendPacket(*packet) == -1)
         m_Socket->CloseSocket();
 }
 
@@ -322,7 +322,8 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
 
     ///- Before we process anything:
     /// If necessary, kick the player from the character select screen
-    if (IsConnectionIdle())
+    /// (m_Socket may be null for playerbots sessions)
+    if (IsConnectionIdle() && m_Socket)
         m_Socket->CloseSocket();
 
     ///- Retrieve packets from the receive queue and call the appropriate handlers

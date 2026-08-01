@@ -949,6 +949,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     // "GetAccountId() == db stored account id" checked in LoadFromDB (prevent login not own character using cheating tools)
     if (!pCurrChar->LoadFromDB(GUID_LOPART(playerGuid), holder))
     {
+        TC_LOG_ERROR("playerbots", "HandlePlayerLogin: LoadFromDB failed for GUID %u", GUID_LOPART(playerGuid));
         SetPlayer(NULL);
         KickPlayer();                                       // disconnect client, player no set to session and it will not deleted or saved at kick
         delete pCurrChar;                                   // delete it manually
@@ -956,6 +957,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
         m_playerLoading = false;
         return;
     }
+    TC_LOG_INFO("playerbots", "HandlePlayerLogin: LoadFromDB succeeded for GUID %u", GUID_LOPART(playerGuid));
 
     pCurrChar->GetMotionMaster()->Initialize();
 

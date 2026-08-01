@@ -669,7 +669,9 @@ void RandomPlayerbotMgr::GetBots()
             Field* fields = result->Fetch();
             uint32 bot = fields[0].GetUInt32();
             if (GetEventValue(bot, "add"))
+            {
                 _currentBots.push_back(bot);
+            }
 
             if (_currentBots.size() >= maxAllowedBotCount)
                 break;

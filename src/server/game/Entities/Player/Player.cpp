@@ -29297,6 +29297,11 @@ void Player::ResetTimeSync()
 
 void Player::SendTimeSync()
 {
+    // Playerbots have no client to respond to CMSG_TIME_SYNC_RESP -
+    // skip time sync for them to avoid "possible cheater" log spam.
+    if (GetSession() && GetSession()->IsBot())
+        return;
+
     m_timeSyncQueue.push(m_movementCounter++);
 
     WorldPacket data(SMSG_TIME_SYNC_REQ, 4);

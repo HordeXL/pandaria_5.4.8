@@ -619,3 +619,29 @@ void RandomPlayerbotFactory::CreateRandomBots()
     TC_LOG_INFO("server.loading", ">> %u random bot accounts with %u characters available", sPlayerbotAIConfig->randomBotAccounts.size(), totalRandomBotChars);
 }
 
+void RandomPlayerbotFactory::LoadCharacterCache()
+{
+    // CharacterCache is only populated when characters are created (CreateRandomBot).
+    // On server restart existing characters (random bots created in previous sessions)
+    // are not re-created, so the cache would stay empty and AddPlayerBot would reject
+    // every bot with "invalid accountid". Load all characters from the DB here.
+    TC_LOG_INFO("playerbots", "Loading existing characters into character cache...");
+    QueryResult result = CharacterDatabase.Query("SELECT guid, account, name, gender, race, class, level FROM characters");
+    if (!result)
+    {
+        TC_LOG_ERROR("playerbots", "Failed to load characters for character cache");
+        return;
+    }
+
+    uint32 count = 0;
+    do
+    {
+        Field* fields = result->Fetch();
+        sCharacterCache->AddCharacterCacheEntry(fields[0].GetUInt64(), fields[1].GetUInt32(), fields[2].GetString(),
+            fields[3].GetUInt8(), fields[4].GetUInt8(), fields[5].GetUInt8(), fields[6].GetUInt8());
+        ++count;
+    } while (result->NextRow());
+
+    TC_LOG_INFO("playerbots", ">> Loaded %u characters into character cache", count);
+}
+

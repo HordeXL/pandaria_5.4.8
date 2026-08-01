@@ -243,8 +243,7 @@ target_include_directories(modules PRIVATE
 target_link_libraries(modules
   PUBLIC
     game
-    common
-    database
+    shared
 )
 
 add_dependencies(modules revision.h)

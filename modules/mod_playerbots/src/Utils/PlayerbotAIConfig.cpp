@@ -171,6 +171,7 @@ bool PlayerbotAIConfig::Initialize()
 
 
     RandomPlayerbotFactory::CreateRandomBots();
+    RandomPlayerbotFactory::LoadCharacterCache();
     if (World::IsStopped())
     {
         return true;

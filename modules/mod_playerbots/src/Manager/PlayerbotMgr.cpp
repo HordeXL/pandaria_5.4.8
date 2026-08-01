@@ -94,18 +94,20 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId
         return;
     }
 
+    TC_LOG_INFO("playerbots", "AddPlayerBot: starting login for GUID %u", playerGuid.GetCounter());
     botLoading.insert(playerGuid);
 
-    // This core has no World::AddQueryHolderCallback - execute the query holder synchronously
+    // Execute the query holder synchronously - this blocks but is fast
     QueryResultHolderFuture future = CharacterDatabase.DelayQueryHolder(holder);
     SQLQueryHolder* result = nullptr;
-    if (future.get(result) == 0 && result)
+    int getResult = future.get(result);
+    if (getResult == 0 && result)
     {
         HandlePlayerBotLoginCallback(static_cast<PlayerbotLoginQueryHolder const&>(*result));
     }
     else
     {
-        TC_LOG_ERROR("playerbots", "Bot login query holder execution failed");
+        TC_LOG_ERROR("playerbots", "Bot login query holder execution failed for GUID %u (getResult=%d)", playerGuid.GetCounter(), getResult);
         botLoading.erase(playerGuid);
         delete holder;
     }
@@ -120,6 +122,7 @@ void PlayerbotHolder::HandlePlayerBotLoginCallback(PlayerbotLoginQueryHolder con
     // allows channels to work as intended)
     // Créer une session WorldSession pour le bot
     WorldSession* botSession = new WorldSession(botAccountId, nullptr, SEC_PLAYER, EXPANSION_MISTS_OF_PANDARIA, 0, LOCALE_frFR, 0, false, false, true);
+    botSession->SetBot(true);
 
     botSession->HandlePlayerLogin((LoginQueryHolder*)&holder);  // will delete lqh
     Player* bot = botSession->GetPlayer();
