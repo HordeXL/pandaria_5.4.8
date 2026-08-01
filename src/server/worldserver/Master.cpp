@@ -403,7 +403,12 @@ int Master::Run()
         DWORD numb;
         WriteConsoleInput(hStdIn, b, 4, &numb);
 
-        cliThread->wait();
+        // Wait briefly so the CLI thread can exit on its own when stdin is a
+        // real console, then force-terminate it. This keeps shutdown fast and
+        // prevents hanging forever when stdin is not a console (e.g. launched
+        // via script/service where WriteConsoleInput cannot unblock fgets).
+        ACE_Based::Thread::Sleep(500);
+        cliThread->destroy();
 
         #else
 

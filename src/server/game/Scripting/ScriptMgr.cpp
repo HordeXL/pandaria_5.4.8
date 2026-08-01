@@ -252,14 +252,16 @@ void ScriptMgr::Unload()
 
     #undef SCR_CLEAR
 
-    for (ExampleScriptContainer::iterator itr = ExampleScripts.begin(); itr != ExampleScripts.end(); ++itr)
-        delete *itr;
-    ExampleScripts.clear();
-
-    UnloadUnusedScripts();
-
-    delete [] SpellSummary;
-    delete [] UnitAI::AISpellInfo;
+    // These deletions are not required during shutdown: the OS reclaims all
+    // process memory at exit. A corrupted heap (from any runtime bug) could
+    // make them crash, and the Windows Error Reporting wait then hangs
+    // shutdown for ~20s. Skip them to keep exit fast and reliable.
+    //for (ExampleScriptContainer::iterator itr = ExampleScripts.begin(); itr != ExampleScripts.end(); ++itr)
+    //    delete *itr;
+    //ExampleScripts.clear();
+    //UnloadUnusedScripts();
+    //delete [] SpellSummary;
+    //delete [] UnitAI::AISpellInfo;
 }
 
 void ScriptMgr::UnloadUnusedScripts()
