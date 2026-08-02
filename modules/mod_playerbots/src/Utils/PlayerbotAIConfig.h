@@ -70,6 +70,7 @@ public:
     uint32 randomBotsPerInterval;
     float randomChangeMultiplier;
     bool randomBotLoginAtStartup;
+    bool randomBotInvitePlayer, randomBotGuildNearby, inviteChat;
     std::string randomBotAccountPrefix;
     uint32 randomBotAccountCount;
     bool randomBotRandomPassword;

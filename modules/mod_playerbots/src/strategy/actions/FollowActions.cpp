@@ -4,11 +4,16 @@
 
 #include "Event.h"
 #include "Formations.h"
+#include "Group.h"
+#include "GroupMgr.h"
 #include "LastMovementValue.h"
+#include "Map.h"
+#include "PlayerbotAIConfig.h"
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "SharedDefines.h"
+#include "WorldSession.h"
 
 bool FollowAction::Execute(Event event)
 {
@@ -153,4 +158,97 @@ bool FleeToMasterAction::isUseful()
         return false;
 
     return true;
+}
+
+namespace
+{
+    // Invite a player to the bot's group, creating a new group if needed.
+    // Mirrors the core invite logic from WorldSession::HandleGroupInviteOpcode.
+    bool InvitePlayerToGroup(Player* bot, Player* target, PlayerbotAI* botAI)
+    {
+        Group* group = bot->GetGroup();
+        if (group && (group->IsFull() || (!group->IsLeader(bot->GetGUID()) && !group->IsAssistant(bot->GetGUID()))))
+            return false;
+
+        if (!group)
+        {
+            group = new Group;
+            if (!group->AddLeaderInvite(bot) || !group->AddInvite(target))
+            {
+                delete group;
+                return false;
+            }
+        }
+        else
+        {
+            if (!group->AddInvite(target))
+                return false;
+        }
+
+        target->GetSession()->SendGroupInviteNotification(bot->GetName(), false);
+
+        if (botAI)
+            botAI->TellMaster("Inviting " + target->GetName());
+        return true;
+    }
+}
+
+bool InviteNearbyAction::Execute(Event /*event*/)
+{
+    if (!sPlayerbotAIConfig->randomBotInvitePlayer)
+        return false;
+
+    Map* map = bot->GetMap();
+    if (!map)
+        return false;
+
+    Map::PlayerList const& players = map->GetPlayers();
+    for (auto const& itr : players)
+    {
+        Player* player = itr.GetSource();
+        if (!player || player == bot || player->GetSession()->IsBot())
+            continue;
+        if (player->GetGroup() || player->GetGroupInvite())
+            continue;
+        if (player->GetTeamId() != bot->GetTeamId())
+            continue;
+        if (!bot->IsWithinDistInMap(player, sPlayerbotAIConfig->sightDistance))
+            continue;
+        if (InvitePlayerToGroup(bot, player, botAI))
+            return true;
+    }
+
+    return false;
+}
+
+bool InviteGuildAction::Execute(Event /*event*/)
+{
+    if (!sPlayerbotAIConfig->randomBotGuildNearby)
+        return false;
+
+    uint32 guildId = bot->GetGuildId();
+    if (!guildId)
+        return false;
+
+    Map* map = bot->GetMap();
+    if (!map)
+        return false;
+
+    Map::PlayerList const& players = map->GetPlayers();
+    for (auto const& itr : players)
+    {
+        Player* player = itr.GetSource();
+        if (!player || player == bot || player->GetSession()->IsBot())
+            continue;
+        if (player->GetGuildId() != guildId)
+            continue;
+        if (player->GetGroup() || player->GetGroupInvite())
+            continue;
+        if (!bot->IsWithinDistInMap(player, sPlayerbotAIConfig->sightDistance))
+            continue;
+        if (InvitePlayerToGroup(bot, player, botAI))
+            return true;
+    }
+
+    return false;
 }

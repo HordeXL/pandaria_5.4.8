@@ -55,13 +55,16 @@ public:
         creators["reach party member to heal"] = &ActionContext::reach_party_member_to_heal;
         creators["reach party member to resurrect"] = &ActionContext::reach_party_member_to_resurrect;
 
-        //creators["invite nearby"] = &ActionContext::invite_nearby;
-        //creators["invite guild"] = &ActionContext::invite_guild;
+        creators["invite nearby"] = &ActionContext::invite_nearby;
+        creators["invite guild"] = &ActionContext::invite_guild;
     }
 
 private:
     static Action* hello(PlayerbotAI* botAI) { return new SayHelloAction(botAI); }
     static Action* move_random(PlayerbotAI* botAI) { return new MoveRandomAction(botAI); }
+
+    static Action* invite_nearby(PlayerbotAI* botAI) { return new InviteNearbyAction(botAI); }
+    static Action* invite_guild(PlayerbotAI* botAI) { return new InviteGuildAction(botAI); }
 
     static Action* follow(PlayerbotAI* botAI) { return new FollowAction(botAI); }
     static Action* flee(PlayerbotAI* botAI) { return new FleeAction(botAI); }

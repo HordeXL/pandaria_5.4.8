@@ -24,4 +24,20 @@ public:
     bool isUseful() override;
 };
 
+class InviteNearbyAction : public Action
+{
+public:
+    InviteNearbyAction(PlayerbotAI* botAI) : Action(botAI, "invite nearby") {}
+
+    bool Execute(Event event) override;
+};
+
+class InviteGuildAction : public Action
+{
+public:
+    InviteGuildAction(PlayerbotAI* botAI) : Action(botAI, "invite guild") {}
+
+    bool Execute(Event event) override;
+};
+
 #endif

@@ -160,6 +160,9 @@ bool PlayerbotAIConfig::Initialize()
     maxRandomBotTeleportInterval = sConfigMgr->GetIntDefault("AiPlayerbot.MaxRandomBotTeleportInterval", 5 * HOUR);
 
     randomBotLoginAtStartup = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotLoginAtStartup", true);
+    randomBotInvitePlayer = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotInvitePlayer", false);
+    randomBotGuildNearby = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotGuildNearby", false);
+    inviteChat = sConfigMgr->GetBoolDefault("AiPlayerbot.InviteChat", false);
     openGoSpell = sConfigMgr->GetIntDefault("AiPlayerbot.OpenGoSpell", 6477);
 
     randomChangeMultiplier = sConfigMgr->GetFloatDefault("AiPlayerbot.RandomChangeMultiplier", 1.0);
