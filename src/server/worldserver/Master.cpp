@@ -85,6 +85,28 @@ class WorldServerSignalHandler : public Trinity::SignalHandler
                     World::StopNow(SHUTDOWN_EXIT_CODE);
                     break;
             }
+
+            // Give the world thread 2 s to finish the current Update and execute
+            // KickAll + UpdateSessions (saves real players), then force-exit.
+            // This makes Ctrl+C shutdown instant regardless of bot count / uptime.
+#ifdef _WIN32
+            Sleep(2000);
+#else
+            sleep(2);
+#endif
+
+            // Update realm status and clear online accounts so the next start
+            // is clean (the world thread may not have reached Master.cpp's
+            // normal cleanup path).
+            uint32 realmID = sConfigMgr->GetIntDefault("RealmID", 0);
+            LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag | %u WHERE id = '%d'", REALM_FLAG_OFFLINE, realmID);
+            LoginDatabase.DirectPExecute("UPDATE account SET online = 0 WHERE online > 0 AND id IN (SELECT acctid FROM realmcharacters WHERE realmid = %d)", realmID);
+
+#ifdef _WIN32
+            ExitProcess(0);
+#else
+            _exit(0);
+#endif
         }
 };
 

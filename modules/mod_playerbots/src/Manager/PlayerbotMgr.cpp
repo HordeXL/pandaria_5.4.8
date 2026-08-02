@@ -30,6 +30,7 @@
 #include "CharacterHandler.h"
 #include "Common.h"
 #include "Chat.h"
+#include "DatabaseEnv.h"
 #include "Define.h"
 #include "Group.h"
 #include "GroupMgr.h"
@@ -41,6 +42,7 @@
 #include "WorldSession.h"
 #include "ChannelMgr.h"
 #include "Log.h"
+#include "TaskMgr.h"
 
 PlayerbotHolder::PlayerbotHolder() : PlayerbotAIBase(false) {}
 class PlayerbotLoginQueryHolder : public LoginQueryHolder
@@ -81,7 +83,7 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId
     uint32 accountId = sCharacterCache->GetCharacterAccountIdByGuid(playerGuid);
     if (!accountId)
     {
-        TC_LOG_DEBUG("playerbots", "Bot %u has invalid accountid", playerGuid.GetCounter());
+        TC_LOG_ERROR("playerbots", "Bot %u has invalid accountid (CharacterCache returned 0)", playerGuid.GetCounter());
         return;
     }
 
@@ -97,20 +99,33 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId
     TC_LOG_INFO("playerbots", "AddPlayerBot: starting login for GUID %u", playerGuid.GetCounter());
     botLoading.insert(playerGuid);
 
-    // Execute the query holder synchronously - this blocks but is fast
     QueryResultHolderFuture future = CharacterDatabase.DelayQueryHolder(holder);
-    SQLQueryHolder* result = nullptr;
-    int getResult = future.get(result);
-    if (getResult == 0 && result)
+
+    // Asynchronous: wait for DB query on a background thread, then schedule
+    // the login callback on the world thread via TaskMgr.  The old synchronous
+    // future.get() blocked the world thread for O(bots) DB queries and caused
+    // "already connected" hangs and high latency for real players.
+    std::thread([this, holder, future, playerGuid]()
     {
-        HandlePlayerBotLoginCallback(static_cast<PlayerbotLoginQueryHolder const&>(*result));
-    }
-    else
-    {
-        TC_LOG_ERROR("playerbots", "Bot login query holder execution failed for GUID %u (getResult=%d)", playerGuid.GetCounter(), getResult);
-        botLoading.erase(playerGuid);
-        delete holder;
-    }
+        SQLQueryHolder* result = nullptr;
+        int getResult = future.get(result);
+        if (getResult == 0 && result)
+        {
+            TaskMgr::Default()->ScheduleInvocation([this, result]()
+            {
+                HandlePlayerBotLoginCallback(static_cast<PlayerbotLoginQueryHolder const&>(*result));
+            });
+        }
+        else
+        {
+            TC_LOG_ERROR("playerbots", "Bot login query holder execution failed for GUID %u (getResult=%d)", playerGuid.GetCounter(), getResult);
+            TaskMgr::Default()->ScheduleInvocation([this, playerGuid, holder]()
+            {
+                botLoading.erase(playerGuid);
+                delete holder;
+            });
+        }
+    }).detach();
 }
 
 void PlayerbotHolder::HandlePlayerBotLoginCallback(PlayerbotLoginQueryHolder const& holder)
@@ -515,14 +530,18 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
     }
 
     group = bot->GetGroup();
-    if (group)
-    {
-        botAI->ResetStrategies();
-    }
-    else
-    {
-        botAI->ResetStrategies();
-    }
+    // ResetStrategies below would race with the map thread's DoNextAction
+    // (both touch the same Engine/Strategy lists).  Bots work fine without
+    // an explicit reset here — the strategy engine is initialized on first
+    // UpdateAI tick.
+    //if (group)
+    //{
+    //    botAI->ResetStrategies();
+    //}
+    //else
+    //{
+    //    botAI->ResetStrategies();
+    //}
 
     if (master && !master->HasUnitState(UNIT_STATE_IN_FLIGHT))
     {
@@ -714,6 +733,66 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
     if (!cmd)
     {
         messages.push_back("usage: list/reload/tweak/self or add/init/remove PLAYERNAME or addclass CLASSNAME");
+        return messages;
+    }
+
+    if (!strcmp(cmd, "list"))
+    {
+        messages.push_back("Available random bots:");
+        for (auto accountId : sPlayerbotAIConfig->randomBotAccounts)
+        {
+            QueryResult result = CharacterDatabase.PQuery("SELECT guid, name, race, class, level FROM characters WHERE account = %u", accountId);
+            if (!result)
+                continue;
+            do
+            {
+                Field* fields = result->Fetch();
+                uint32 guid = fields[0].GetUInt32();
+                std::string name = fields[1].GetString();
+                uint8 race = fields[2].GetUInt8();
+                uint8 cls = fields[3].GetUInt8();
+                uint8 level = fields[4].GetUInt8();
+                std::string raceStr = (race == 1 || race == 3 || race == 4 || race == 7 || race == 11 || race == 22) ? "A" : "H";
+                bool online = ObjectAccessor::FindPlayer(ObjectGuid(MAKE_NEW_GUID(guid, 0, HIGHGUID_PLAYER))) != nullptr;
+                messages.push_back(raceStr + " [" + std::to_string(level) + "] " + name + (online ? " (online)" : ""));
+            } while (result->NextRow());
+        }
+        return messages;
+    }
+
+    if (!strcmp(cmd, "add"))
+    {
+        if (!charname)
+        {
+            messages.push_back("Usage: add PLAYERNAME");
+            return messages;
+        }
+
+        QueryResult result = CharacterDatabase.PQuery("SELECT guid, account FROM characters WHERE name = '%s'", charname);
+        if (!result)
+        {
+            messages.push_back("Character not found");
+            return messages;
+        }
+        Field* fields = result->Fetch();
+        uint32 guid = fields[0].GetUInt32();
+        uint32 accountId = fields[1].GetUInt32();
+
+        if (!sPlayerbotAIConfig->IsInRandomAccountList(accountId))
+        {
+            messages.push_back("Character is not a random bot");
+            return messages;
+        }
+
+        ObjectGuid botGuid = ObjectGuid(MAKE_NEW_GUID(guid, 0, HIGHGUID_PLAYER));
+        if (ObjectAccessor::FindPlayer(botGuid))
+        {
+            messages.push_back("Bot is already online");
+            return messages;
+        }
+
+        AddPlayerBot(botGuid, master->GetSession()->GetAccountId());
+        messages.push_back("Bot " + std::string(charname) + " added");
         return messages;
     }
 

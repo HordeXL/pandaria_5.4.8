@@ -18,6 +18,8 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
     if (!grp)
         return false;
 
+    TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s accepting invite", bot->GetName().c_str());
+
     // Accept the invite (synchronous, bot joins the group).
     WorldPacket p;
     uint8 unk = 0;
@@ -34,7 +36,12 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
     if (sRandomPlayerbotMgr->IsRandomBot(bot))
     {
         if (Player* groupMaster = botAI->GetGroupMaster())
+        {
             botAI->SetMaster(groupMaster);
+            TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s now has master %s", bot->GetName().c_str(), groupMaster->GetName().c_str());
+        }
+        else
+            TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s COULD NOT SET MASTER - GetGroupMaster() returned null", bot->GetName().c_str());
     }
 
     botAI->ResetStrategies();

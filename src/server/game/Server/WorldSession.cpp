@@ -505,7 +505,7 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
             m_Socket = NULL;
         }
 
-        if (!m_Socket)
+        if (!m_Socket && !IsBot())
             return false;                                       //Will remove this session from the world session map
     }
 

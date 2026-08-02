@@ -134,11 +134,18 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
 
     uint32 updateBots = sPlayerbotAIConfig->randomBotsPerInterval * onlineBotFocus / 100;
     uint32 maxNewBots = onlineBotCount < maxAllowedBotCount ? maxAllowedBotCount - onlineBotCount : 0;
-    uint32 loginBots = std::min(sPlayerbotAIConfig->randomBotsPerInterval - updateBots, maxNewBots);
+    // During init botsPerInterval is capped so new bots trickle in slowly
+    // instead of all logging in within a few seconds and overwhelming the
+    // world thread with their first Randomize / TeleportTo.
+    uint32 initBotsPerInterval = _isBotInitializing ? std::min(5u, sPlayerbotAIConfig->randomBotsPerInterval) : sPlayerbotAIConfig->randomBotsPerInterval;
+    uint32 loginBots = std::min(initBotsPerInterval - std::min(updateBots, initBotsPerInterval), maxNewBots);
 
     if (!availableBots.empty())
     {
-        // Update bots
+        // Update bots (with a 50 ms time budget so heavy operations like
+        // Randomize / TeleportTo don't block the world thread and prevent
+        // real players from connecting / casting spells).
+        uint32 updateStart = getMSTime();
         for (auto bot : availableBots)
         {
             if (!GetPlayerBot(bot))
@@ -150,6 +157,9 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
             }
 
             if (!updateBots)
+                break;
+
+            if (getMSTimeDiff(updateStart, getMSTime()) > 50)
                 break;
         }
 
@@ -229,8 +239,8 @@ uint32 RandomPlayerbotMgr::AddRandomBots()
 
                 SetEventValue(guid, "add", 1, add_time);
                 SetEventValue(guid, "logout", 0, 0);
-                SetEventValue(guid, "randomize", 1, add_time * 2);
-                SetEventValue(guid, "teleport", 1, add_time * 2);
+                SetEventValue(guid, "randomize", 1, urand(60, 300));
+                SetEventValue(guid, "teleport", 1, urand(60, 300));
                 _currentBots.push_back(guid);
 
                 maxAllowedBotCount--;
@@ -251,6 +261,8 @@ uint32 RandomPlayerbotMgr::AddRandomBots()
 
 void RandomPlayerbotMgr::Remove(Player* bot)
 {
+    std::lock_guard<std::recursive_mutex> lock(_dataMutex);
+
     ObjectGuid owner = bot->GetGUID();
 
     PreparedStatement* stmt = PlayerbotsDatabase.GetPreparedStatement(PLAYERBOTS_DEL_RANDOM_BOTS_BY_OWNER);
@@ -309,23 +321,14 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
         
         SetEventValue(bot, "update", 1, randomTime);
 
-        // do not randomize or teleport immediately after server start (prevent lagging)
-        if (!GetEventValue(bot, "randomize"))
-        {
-            int minValue = std::max(7, static_cast<int>(randomBotUpdateInterval * 0.7));
-            int maxValue = std::max(14, static_cast<int>(randomBotUpdateInterval * 1.4));
-            randomTime = minValue + (std::rand() % (maxValue - minValue + 1));
+        // Schedule first randomize/teleport with a fixed wide window (60-300s)
+        // so bots randomize/teleport spread out instead of all firing at once
+        // (which blocked the world thread and caused "already connected" hangs).
+        randomTime = 60 + (std::rand() % 241);
+        ScheduleRandomize(bot, randomTime);
 
-            ScheduleRandomize(bot, randomTime);
-        }
-        if (!GetEventValue(bot, "teleport"))
-        {
-            int minValue = std::max(7, static_cast<int>(randomBotUpdateInterval * 0.7));
-            int maxValue = std::max(14, static_cast<int>(randomBotUpdateInterval * 1.4));
-            randomTime = minValue + (std::rand() % (maxValue - minValue + 1));
-
-            ScheduleTeleport(bot, randomTime);
-        }
+        randomTime = 60 + (std::rand() % 241);
+        ScheduleTeleport(bot, randomTime);
 
         return true;
     }
@@ -603,7 +606,6 @@ void RandomPlayerbotMgr::Refresh(Player* bot)
     TC_LOG_INFO("playerbots", "Refreshing bot #%u <%s>", GUID_LOPART(bot->GetGUID()), bot->GetName().c_str());
     PerformanceMonitorOperation* pmo = sPerformanceMonitor->start(PERF_MON_RNDBOT, "Refresh");
 
-    botAI->Reset();
     bot->DurabilityRepairAll(false, 1.0f, false);
     bot->SetFullHealth();
     //bot->SetPvP(true);
@@ -681,6 +683,8 @@ void RandomPlayerbotMgr::GetBots()
 
 uint32 RandomPlayerbotMgr::GetEventValue(uint32 bot, std::string const event)
 {
+    std::lock_guard<std::recursive_mutex> lock(_dataMutex);
+
     // load all events at once on first event load
     if (_eventCache[bot].empty())
     {
@@ -726,6 +730,8 @@ std::string const RandomPlayerbotMgr::GetEventData(uint32 bot, std::string const
 uint32 RandomPlayerbotMgr::SetEventValue(uint32 bot, std::string const event, uint32 value, uint32 validIn,
     std::string const data)
 {
+    std::lock_guard<std::recursive_mutex> lock(_dataMutex);
+
     SQLTransaction trans = PlayerbotsDatabase.BeginTransaction();
 
     PreparedStatement* stmt = PlayerbotsDatabase.GetPreparedStatement(PLAYERBOTS_DEL_RANDOM_BOTS_BY_OWNER_AND_EVENT);
@@ -804,7 +810,10 @@ void RandomPlayerbotMgr::OnPlayerLogout(Player* player)
 
     std::vector<Player*>::iterator i = std::find(_players.begin(), _players.end(), player);
     if (i != _players.end())
+        {
+        std::lock_guard<std::mutex> guard(_playersMutex);
         _players.erase(i);
+    }
 }
 
 void RandomPlayerbotMgr::OnBotLoginInternal(Player* const bot)
@@ -953,7 +962,10 @@ void RandomPlayerbotMgr::OnPlayerLogin(Player* player)
 
     if (!IsRandomBot(player))
     {
+        {
+        std::lock_guard<std::mutex> guard(_playersMutex);
         _players.push_back(player);
+    }
         TC_LOG_DEBUG("playerbots", "Including non-random bot player %s into random bot update", player->GetName().c_str());
     }
 }
@@ -1192,16 +1204,17 @@ void RandomPlayerbotMgr::RandomTeleportForLevel(Player* bot)
     {
         if (const auto city_data = GetCityForPlayer(bot))
         {
-            Map* map = sMapMgr->FindMap(city_data->map_id, 0);
-
+            TC_LOG_INFO("playerbots", "TP: bot %s TeleportTo city %u (%.0f %.0f %.0f) started",
+                bot->GetName().c_str(), city_data->map_id, city_data->x, city_data->y, city_data->z);
             bot->TeleportTo(city_data->map_id, city_data->x, city_data->y, city_data->z, 0.0f, 0);
+            TC_LOG_INFO("playerbots", "TP: bot %s TeleportTo city DONE", bot->GetName().c_str());
             TC_LOG_INFO("playerbots", "Bot #%u <%s> teleported to City: map{%u} %f:%f:%f", GUID_LOPART(bot->GetGUID()), bot->GetName().c_str(), city_data->map_id, city_data->x, city_data->y, city_data->z);
         }
         else if (const auto farm_spot = GetFarmZoneForPlayer(bot))
         {
-            Map* map = sMapMgr->FindMap(farm_spot->map_id, 0);
-
+            TC_LOG_INFO("playerbots", "TP: bot %s TeleportTo farmspot %u started", bot->GetName().c_str(), farm_spot->map_id);
             bot->TeleportTo(farm_spot->map_id, farm_spot->x, farm_spot->y, farm_spot->z, 0.0f, 0);
+            TC_LOG_INFO("playerbots", "TP: bot %s TeleportTo farmspot DONE", bot->GetName().c_str());
             TC_LOG_INFO("playerbots", "Bot #%u <%s> teleported to FarmSpot: map{%u} %f:%f:%f", GUID_LOPART(bot->GetGUID()), bot->GetName().c_str(), farm_spot->map_id, farm_spot->x, farm_spot->y, farm_spot->z);
         }
     }
@@ -1209,9 +1222,9 @@ void RandomPlayerbotMgr::RandomTeleportForLevel(Player* bot)
     {
         if (const auto farm_zone = GetFarmZoneForPlayer(bot))
         {
-            Map* map = sMapMgr->FindMap(farm_zone->map_id, 0);
-
+            TC_LOG_INFO("playerbots", "TP: bot %s TeleportTo farmzone %u started", bot->GetName().c_str(), farm_zone->map_id);
             bot->TeleportTo(farm_zone->map_id, farm_zone->x, farm_zone->y, farm_zone->z, 0.0f, 0);
+            TC_LOG_INFO("playerbots", "TP: bot %s TeleportTo farmzone DONE", bot->GetName().c_str());
             TC_LOG_INFO("playerbots", "Bot #%u <%s> teleported to FarmZone: map{%u} %f:%f:%f", GUID_LOPART(bot->GetGUID()), bot->GetName().c_str(), farm_zone->map_id, farm_zone->x, farm_zone->y, farm_zone->z);
         }
     }

@@ -2,6 +2,7 @@
 #define _PLAYERBOT_RANDOMPLAYERBOTMGR_H
 
 #include "PlayerbotMgr.h"
+#include <mutex>
 
 class CachedEvent
 {
@@ -99,7 +100,11 @@ public:
     void OnPlayerLoginError(uint32 bot);
     
     Player* GetRandomPlayer();
-    std::vector<Player*> GetPlayers() { return _players; };
+    std::vector<Player*> GetPlayers()
+    {
+        std::lock_guard<std::mutex> lock(_playersMutex);
+        return _players;
+    };
     PlayerBotMap GetAllBots() { return playerBots; };
     void Refresh(Player* bot);
     uint32 GetMaxAllowedBotCount();
@@ -145,11 +150,13 @@ private:
     bool _isBotInitializing = true;
     time_t _playersCheckTimer;
     typedef void (RandomPlayerbotMgr::* ConsoleCommandHandler)(Player*);
+    std::mutex _playersMutex;
     std::vector<Player*> _players;
     uint32 _processTicks;
     uint32 _playersLevel;
 
     // -- lists
+    std::recursive_mutex _dataMutex;
     std::map<uint32, std::map<std::string, CachedEvent>> _eventCache;
     std::map<uint8, std::vector<ObjectGuid>> _addclassCache;
     std::vector<city> _city_cache_data;

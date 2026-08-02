@@ -1,4 +1,4 @@
-﻿/*
+/*
 * This file is part of the Legends of Azeroth Pandaria Project. See THANKS file for Copyright information
 *
 * This program is free software; you can redistribute it and/or modify it
@@ -317,18 +317,6 @@ void PlayerbotAI::UpdateAIInternal([[maybe_unused]] uint32 elapsed, bool minimal
     if (bot->IsBeingTeleported() || !bot->IsInWorld())
         return;
 
-    // Bot was in a group but no longer is (kicked out / group disbanded).
-    // LeaveGroupAction only covers bot-initiated leaves; core group removal
-    // (kick/disband) has no packet path for bots, so detect it here: drop the
-    // group-based master and reset strategies so the bot stops following.
-    Group* group = bot->GetGroup();
-    if (_wasInGroup && !group && GetMaster())
-    {
-        SetMaster(nullptr);
-        ResetStrategies();
-        Reset();
-    }
-    _wasInGroup = group != nullptr;
 
     std::string const mapString = WorldPosition(bot).isOverworld() ? std::to_string(bot->GetMapId()) : "I";
     PerformanceMonitorOperation* pmo =
@@ -1071,7 +1059,7 @@ void PlayerbotAI::HandleTeleportAck()
     {
         while (bot->IsBeingTeleportedFar())
         {
-            // HandleMoveWorldportAck not available in this core - wait for teleport to finish
+            bot->GetSession()->HandleMoveWorldportAckOpcode();
         }
         // SetNextCheckDelay(urand(2000, 5000));
         //if (sPlayerbotAIConfig->applyInstanceStrategies)

@@ -369,7 +369,12 @@ public:
     {
         handler->SendSysMessage(LANG_COMMAND_EXIT);
         World::StopNow(SHUTDOWN_EXIT_CODE);
-        return true;
+
+        // Give the world thread 2 s to finish current Update and save players,
+        // then force-exit.  This makes server exit instant regardless of bot
+        // count / uptime even if the world loop is stuck.
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        _exit(0);
     }
 
     // Define the 'Message of the day' for the realm
