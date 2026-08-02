@@ -18,13 +18,7 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
     if (!grp)
         return false;
 
-    // The inviter is the leader of the pending invite group
-    // (set by Group::AddLeaderInvite when the invite was created).
-    ObjectGuid leaderGuid = grp->GetLeaderGUID();
-    Player* inviter = leaderGuid ? ObjectAccessor::FindPlayer(leaderGuid) : nullptr;
-    if (!inviter)
-        return false;
-
+    // Accept the invite (synchronous, bot joins the group).
     WorldPacket p;
     uint8 unk = 0;
     p << unk;
@@ -33,16 +27,19 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
     p.FlushBits();
     bot->GetSession()->HandleGroupInviteResponseOpcode(p);
 
+    // After accepting, set the group leader as master.  Do not rely on
+    // GetLeaderGUID() before accepting: when the inviter already has a group
+    // the pending invite group's leader is the *original* leader, not the
+    // inviter, and FindPlayer may fail (offline/different map).
     if (sRandomPlayerbotMgr->IsRandomBot(bot))
-        botAI->SetMaster(inviter);
+    {
+        if (Player* groupMaster = botAI->GetGroupMaster())
+            botAI->SetMaster(groupMaster);
+    }
 
     botAI->ResetStrategies();
     botAI->ChangeStrategy("+follow,-lfg,-bg", BOT_STATE_NON_COMBAT);
     botAI->Reset();
 
-    if (bot->GetDistance(inviter) > sPlayerbotAIConfig->sightDistance)
-    {
-        //Teleport(inviter, bot);
-    }
     return true;
 }
