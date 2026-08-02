@@ -159,7 +159,12 @@ WorldSession::WorldSession(uint32 id, WorldSocket* sock, AccountTypes sec, uint8
 WorldSession::~WorldSession()
 {
     ///- unload player if not unloaded
-    if (_player)
+    // During server shutdown, bot sessions (socket == nullptr) are deleted one
+    // by one by World::UpdateSessions. Skip the full logout/save for them: bots
+    // have no client data to persist and saving+cleaning O(bots) players makes
+    // shutdown very slow (worse the more bots / the longer the uptime). The OS
+    // reclaims all memory at process exit anyway.
+    if (_player && !(IsBot() && World::IsStopped()))
         LogoutPlayer (true);
 
     /// - If have unclosed socket, close it
