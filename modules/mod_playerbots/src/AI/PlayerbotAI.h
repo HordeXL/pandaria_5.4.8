@@ -228,6 +228,7 @@ protected:
     Engine* _currentEngine;
     Engine* _engines[BOT_STATE_MAX];
     BotState _currentState;
+    bool _wasInGroup = false;
     NewRpgInfo _rpgInfo;
     //ChatHelper chatHelper;
     //std::list<ChatCommandHolder> chatCommands;

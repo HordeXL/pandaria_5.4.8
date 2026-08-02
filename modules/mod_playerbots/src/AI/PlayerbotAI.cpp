@@ -317,6 +317,19 @@ void PlayerbotAI::UpdateAIInternal([[maybe_unused]] uint32 elapsed, bool minimal
     if (bot->IsBeingTeleported() || !bot->IsInWorld())
         return;
 
+    // Bot was in a group but no longer is (kicked out / group disbanded).
+    // LeaveGroupAction only covers bot-initiated leaves; core group removal
+    // (kick/disband) has no packet path for bots, so detect it here: drop the
+    // group-based master and reset strategies so the bot stops following.
+    Group* group = bot->GetGroup();
+    if (_wasInGroup && !group && GetMaster())
+    {
+        SetMaster(nullptr);
+        ResetStrategies();
+        Reset();
+    }
+    _wasInGroup = group != nullptr;
+
     std::string const mapString = WorldPosition(bot).isOverworld() ? std::to_string(bot->GetMapId()) : "I";
     PerformanceMonitorOperation* pmo =
             sPerformanceMonitor->start(PERF_MON_TOTAL, "PlayerbotAI::UpdateAIInternal " + mapString);
