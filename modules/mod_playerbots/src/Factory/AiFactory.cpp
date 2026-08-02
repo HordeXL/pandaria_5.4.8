@@ -466,6 +466,10 @@ Engine* AiFactory::createCombatEngine(Player* player, PlayerbotAI* const facade,
 
 void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const facade, Engine* nonCombatEngine)
 {
+    // Group management (auto-accept invites, invite nearby/guild, leave far away)
+    // must be active in non-combat for bots to follow group leaders.
+    nonCombatEngine->addStrategiesNoInit("group", nullptr);
+
     const Specializations tab = GetPlayerSpecTab(player);
 
     switch (player->GetClass())
