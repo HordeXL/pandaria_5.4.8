@@ -1,4 +1,4 @@
-﻿/*
+/*
 * This file is part of the Legends of Azeroth Pandaria Project. See THANKS file for Copyright information
 *
 * This program is free software; you can redistribute it and/or modify it
@@ -723,8 +723,11 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
 
     if (!*args)
     {
-        messages.push_back("usage: list/reload/tweak/self or add/init/remove PLAYERNAME\n");
-        messages.push_back("usage: addclass CLASSNAME");
+        messages.push_back("usage: list/add/init/remove PLAYERNAME\n");
+        messages.push_back("usage: addclass CLASSNAME\n");
+        messages.push_back("usage: setspec TAB (with bot target selected)\n");
+        messages.push_back("usage: reequip (with bot target selected) - re-equip selected bot\n");
+        messages.push_back("usage: rndbot reequip - re-equip ALL online random bots");
         return messages;
     }
 
@@ -829,6 +832,88 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
             GET_PLAYERBOT_AI(bot)->Reset(true);
         }
         return StringVector();
+    }
+
+    if (!strcmp(cmd, "reequip") && master)
+    {
+        Player* target = master->GetSelectedPlayer();
+        if (!target)
+        {
+            messages.push_back("Usage: select a bot target, then type: .npcbot reequip");
+            messages.push_back("Or reequip all random bots: .npcbot rndbot reequip");
+            return messages;
+        }
+
+        if (!sRandomPlayerbotMgr->IsRandomBot(target))
+        {
+            messages.push_back("Target is not a random bot");
+            return messages;
+        }
+
+        // Ensure specialization is set first (required for gear lookup)
+        if (target->GetSpecialization() == Specializations::SPEC_NONE)
+        {
+            uint32 tabCount = (target->GetClass() == CLASS_DRUID) ? 4 : 3;
+            uint32 tab = std::rand() % tabCount;
+            WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
+            p << tab;
+            target->GetSession()->HandeSetTalentSpecialization(p);
+            target->ActivateSpec(0);
+        }
+
+        BotFactory factory(target, target->GetLevel());
+        factory.InitTalentsTree(false);
+        factory.InitEquipment(false);
+        target->SaveToDB(false);
+        messages.push_back(std::string(target->GetName().c_str()) + " has been reequipped.");
+        return messages;
+    }
+
+    if (!strcmp(cmd, "rndbot") && master)
+    {
+        if (!charname)
+        {
+            messages.push_back("Usage: .npcbot rndbot reequip - reequip all online random bots");
+            return messages;
+        }
+
+        if (!strcmp(charname, "reequip"))
+        {
+            uint32 count = 0;
+            auto const& allPlayers = ObjectAccessor::GetPlayers();
+            for (auto const& itr : allPlayers)
+            {
+                Player* bot = itr.second;
+                if (!bot || !bot->IsInWorld())
+                    continue;
+                if (!sRandomPlayerbotMgr->IsRandomBot(GUID_LOPART(bot->GetGUID())))
+                    continue;
+
+                // Ensure specialization is set first
+                if (bot->GetSpecialization() == Specializations::SPEC_NONE)
+                {
+                    uint32 tabCount = (bot->GetClass() == CLASS_DRUID) ? 4 : 3;
+                    uint32 tab = std::rand() % tabCount;
+                    WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
+                    p << tab;
+                    bot->GetSession()->HandeSetTalentSpecialization(p);
+                    bot->ActivateSpec(0);
+                }
+
+                BotFactory factory(bot, bot->GetLevel());
+                factory.InitTalentsTree(false);
+                factory.InitEquipment(false);
+                bot->SaveToDB(false);
+                count++;
+            }
+            std::ostringstream ss;
+            ss << "Reequipped " << count << " random bot(s).";
+            messages.push_back(ss.str());
+            return messages;
+        }
+
+        messages.push_back("Unknown rndbot subcommand. Available: reequip");
+        return messages;
     }
 
     if (!strcmp(cmd, "addclass"))

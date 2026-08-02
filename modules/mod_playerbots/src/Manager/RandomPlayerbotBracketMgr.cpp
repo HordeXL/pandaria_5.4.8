@@ -5,7 +5,7 @@
 #include "RandomPlayerbotMgr.h"
 
 RandomBotBacketManager::RandomBotBacketManager()
-    : _timer{ 0 }
+    : _timer{ _BotDistCheckFrequency * 1000 }  // start high so first check runs immediately
     , _BotDistDebugMode{ true }
 {
     _AllianceLevelRanges[0]     = { 1, 9,   2 };

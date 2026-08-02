@@ -161,6 +161,10 @@ void BotFactory::Randomize(bool incremental)
 
     InitPet();
 
+    // Must init talents (and specialization) BEFORE InitEquipment,
+    // otherwise spec is SPEC_NONE and all gear/weapon checks fail.
+    InitTalentsTree(true);
+
     InitEquipment(false);
 
     bot->SetMoney(urand(level * 100000, level * 5 * 100000));
@@ -349,15 +353,15 @@ void BotFactory::InitTalentsTree(bool reset)
     // if no spec then pick one random (need to change that to balance)
     if (bot->GetSpecialization() == Specializations::SPEC_NONE)
     {
-        // -- Select spec
-        if (bot->GetLevel() >= 10)
-        {
-            uint32 tab = std::rand() % 3;
-            WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
-            p << tab;
-            bot->GetSession()->HandeSetTalentSpecialization(p);
-            bot->ActivateSpec(0);
-        }
+        // Always select a specialization even for low-level bots,
+        // otherwise gear lookup fails (spec is required for armor/weapon selection).
+        // Talent learning below level 10 will simply have no points to spend.
+        uint32 tabCount = (bot->GetClass() == CLASS_DRUID) ? 4 : 3;
+        uint32 tab = std::rand() % tabCount;
+        WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
+        p << tab;
+        bot->GetSession()->HandeSetTalentSpecialization(p);
+        bot->ActivateSpec(0);
     }
 
     WorldPacket p(CMSG_LEARN_TALENT);

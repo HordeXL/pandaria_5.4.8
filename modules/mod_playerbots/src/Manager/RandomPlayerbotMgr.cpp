@@ -239,8 +239,8 @@ uint32 RandomPlayerbotMgr::AddRandomBots()
 
                 SetEventValue(guid, "add", 1, add_time);
                 SetEventValue(guid, "logout", 0, 0);
-                SetEventValue(guid, "randomize", 1, urand(60, 300));
-                SetEventValue(guid, "teleport", 1, urand(60, 300));
+                SetEventValue(guid, "randomize", 1, urand(5, 15));
+                SetEventValue(guid, "teleport", 1, urand(5, 15));
                 _currentBots.push_back(guid);
 
                 maxAllowedBotCount--;
@@ -321,13 +321,13 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
         
         SetEventValue(bot, "update", 1, randomTime);
 
-        // Schedule first randomize/teleport with a fixed wide window (60-300s)
-        // so bots randomize/teleport spread out instead of all firing at once
-        // (which blocked the world thread and caused "already connected" hangs).
-        randomTime = 60 + (std::rand() % 241);
+        // Schedule first randomize with a short window (5-15s) so bots
+        // quickly get level, gear, and teleport out of the starting zone.
+        // Spread out slightly to avoid hammering the world thread.
+        randomTime = 5 + (std::rand() % 11);
         ScheduleRandomize(bot, randomTime);
 
-        randomTime = 60 + (std::rand() % 241);
+        randomTime = 5 + (std::rand() % 11);
         ScheduleTeleport(bot, randomTime);
 
         return true;
@@ -454,7 +454,11 @@ bool RandomPlayerbotMgr::ProcessBot(Player* player)
         if (!randomize)
         {
             PerformanceMonitorOperation* pmo = sPerformanceMonitor->start(PERF_MON_RNDBOT, "Randomize");
-            Randomize(player);
+            uint8 level = GetValue(bot, "level");
+            if (level)
+                Randomize(player);
+            else
+                RandomizeFirst(player);
             TC_LOG_DEBUG("playerbots", "Bot #%u %s:%u <%s>: randomized", bot.GetCounter(), player->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", player->GetLevel(), player->GetName().c_str());
             if (pmo)
                 pmo->finish();
@@ -466,6 +470,16 @@ bool RandomPlayerbotMgr::ProcessBot(Player* player)
         {
             PerformanceMonitorOperation* pmo = sPerformanceMonitor->start(PERF_MON_RNDBOT, "RandomTeleportByLocations");
             TC_LOG_DEBUG("playerbots", "Bot #%u <%s>: teleport for level and refresh", bot.GetCounter(), player->GetName().c_str());
+
+            uint8 level = GetValue(bot, "level");
+            if (!level)
+            {
+                RandomizeFirst(player);
+                if (pmo)
+                    pmo->finish();
+                return true;
+            }
+
             Refresh(player);
             RandomTeleportForLevel(player);
             uint32 time = urand(sPlayerbotAIConfig->minRandomBotTeleportInterval, sPlayerbotAIConfig->maxRandomBotTeleportInterval);

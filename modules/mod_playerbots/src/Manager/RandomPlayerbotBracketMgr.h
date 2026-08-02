@@ -33,7 +33,7 @@ private:
     static const uint8 NUM_RANGES = 11;
     LevelRangeConfig _AllianceLevelRanges[NUM_RANGES];
     LevelRangeConfig _HordeLevelRanges[NUM_RANGES];
-    static const uint32 _BotDistCheckFrequency = 300; // in seconds
+    static const uint32 _BotDistCheckFrequency = 60; // in seconds
 };
 
 #define sBracketMgr RandomBotBacketManager::instance()
