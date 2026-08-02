@@ -97,6 +97,8 @@ public:
         creators["pet attack"] = &TriggerContext::pet_attack;
 
         creators["protect party member"] = &TriggerContext::protect_party_member;
+
+        creators["group invite"] = &TriggerContext::group_invite;
     }
 
 private:
@@ -177,6 +179,7 @@ private:
     static Trigger* pet_attack(PlayerbotAI* botAI) { return new PetAttackTrigger(botAI); }
 
     static Trigger* protect_party_member(PlayerbotAI* botAI) { return new ProtectPartyMemberTrigger(botAI); }
+    static Trigger* group_invite(PlayerbotAI* botAI) { return new GroupInviteTrigger(botAI); }
 };
 
 #endif

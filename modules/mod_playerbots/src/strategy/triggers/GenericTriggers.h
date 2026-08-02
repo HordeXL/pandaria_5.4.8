@@ -864,4 +864,14 @@ public:
 public:
     virtual Value<Unit*>* GetTargetValue();
 };
+
+// Fires while the bot has a pending group invite (state-based, no client packet
+// required - bots have no socket so the normal SMSG_GROUP_INVITE path is broken).
+class GroupInviteTrigger : public Trigger
+{
+public:
+    GroupInviteTrigger(PlayerbotAI* botAI) : Trigger(botAI, "group invite") {}
+
+    bool IsActive() override;
+};
 #endif
