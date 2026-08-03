@@ -18,6 +18,14 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
     if (!grp)
         return false;
 
+    // If the bot is the group leader of the pending invite (i.e. the bot
+    // invited itself when creating a group), silently skip - nothing to do.
+    if (grp->GetLeaderGUID() == bot->GetGUID())
+    {
+        bot->SetGroupInvite(nullptr);
+        return false;
+    }
+
     TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s accepting invite", bot->GetName().c_str());
 
     // Accept the invite (synchronous, bot joins the group).
@@ -29,19 +37,22 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
     p.FlushBits();
     bot->GetSession()->HandleGroupInviteResponseOpcode(p);
 
-    // After accepting, set the group leader as master.  Do not rely on
-    // GetLeaderGUID() before accepting: when the inviter already has a group
-    // the pending invite group's leader is the *original* leader, not the
-    // inviter, and FindPlayer may fail (offline/different map).
+    // After accepting, set the group leader as master. Look up the leader
+    // directly from the group rather than via GetGroupMaster() which has
+    // fallback logic that may return the old master.
     if (sRandomPlayerbotMgr->IsRandomBot(bot))
     {
-        if (Player* groupMaster = botAI->GetGroupMaster())
+        Player* groupMaster = nullptr;
+        if (Group* group = bot->GetGroup())
+            groupMaster = ObjectAccessor::FindPlayer(group->GetLeaderGUID());
+
+        if (groupMaster)
         {
             botAI->SetMaster(groupMaster);
             TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s now has master %s", bot->GetName().c_str(), groupMaster->GetName().c_str());
         }
         else
-            TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s COULD NOT SET MASTER - GetGroupMaster() returned null", bot->GetName().c_str());
+            TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s COULD NOT SET MASTER - group leader not found", bot->GetName().c_str());
     }
 
     botAI->ResetStrategies();

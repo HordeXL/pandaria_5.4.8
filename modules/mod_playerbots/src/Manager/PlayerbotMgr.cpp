@@ -727,7 +727,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
         messages.push_back("usage: addclass CLASSNAME\n");
         messages.push_back("usage: setspec TAB (with bot target selected)\n");
         messages.push_back("usage: reequip (with bot target selected) - re-equip selected bot\n");
-        messages.push_back("usage: rndbot reequip - re-equip ALL online random bots");
+        messages.push_back("usage: rndbot reequip - re-equip ALL online bots");
         return messages;
     }
 
@@ -836,36 +836,24 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
 
     if (!strcmp(cmd, "reequip") && master)
     {
-        Player* target = master->GetSelectedPlayer();
+        Player* target = ObjectAccessor::FindPlayer(master->GetTarget());
         if (!target)
         {
             messages.push_back("Usage: select a bot target, then type: .npcbot reequip");
-            messages.push_back("Or reequip all random bots: .npcbot rndbot reequip");
+            messages.push_back("Or reequip all bots: .npcbot rndbot reequip");
             return messages;
         }
 
-        if (!sRandomPlayerbotMgr->IsRandomBot(target))
+        if (!GET_PLAYERBOT_AI(target))
         {
-            messages.push_back("Target is not a random bot");
+            messages.push_back("Target is not a bot");
             return messages;
         }
 
-        // Ensure specialization is set first (required for gear lookup)
-        if (target->GetSpecialization() == Specializations::SPEC_NONE)
-        {
-            uint32 tabCount = (target->GetClass() == CLASS_DRUID) ? 4 : 3;
-            uint32 tab = std::rand() % tabCount;
-            WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
-            p << tab;
-            target->GetSession()->HandeSetTalentSpecialization(p);
-            target->ActivateSpec(0);
-        }
-
-        BotFactory factory(target, target->GetLevel());
-        factory.InitTalentsTree(false);
-        factory.InitEquipment(false);
-        target->SaveToDB(false);
-        messages.push_back(std::string(target->GetName().c_str()) + " has been reequipped.");
+        // Set flag: the actual reequip runs on the Map thread in UpdateAI,
+        // avoiding cross-thread Player object access that causes crashes.
+        GET_PLAYERBOT_AI(target)->SetPendingReequip(true);
+        messages.push_back(std::string(target->GetName().c_str()) + " reequip scheduled.");
         return messages;
     }
 
@@ -873,41 +861,37 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
     {
         if (!charname)
         {
-            messages.push_back("Usage: .npcbot rndbot reequip - reequip all online random bots");
+            messages.push_back("Usage: .npcbot rndbot reequip - reequip all online bots");
             return messages;
         }
 
         if (!strcmp(charname, "reequip"))
         {
             uint32 count = 0;
-            auto const& allPlayers = ObjectAccessor::GetPlayers();
-            for (auto const& itr : allPlayers)
+
+            // Collect bot pointers under read lock to prevent iterator invalidation
+            // when other threads modify the player map (login/logout) during iteration.
+            std::vector<Player*> botList;
             {
-                Player* bot = itr.second;
-                if (!bot || !bot->IsInWorld())
-                    continue;
-                if (!sRandomPlayerbotMgr->IsRandomBot(GUID_LOPART(bot->GetGUID())))
-                    continue;
-
-                // Ensure specialization is set first
-                if (bot->GetSpecialization() == Specializations::SPEC_NONE)
+                TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
+                auto const& allPlayers = ObjectAccessor::GetPlayers();
+                for (auto const& itr : allPlayers)
                 {
-                    uint32 tabCount = (bot->GetClass() == CLASS_DRUID) ? 4 : 3;
-                    uint32 tab = std::rand() % tabCount;
-                    WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
-                    p << tab;
-                    bot->GetSession()->HandeSetTalentSpecialization(p);
-                    bot->ActivateSpec(0);
+                    Player* bot = itr.second;
+                    if (!bot || !bot->IsInWorld())
+                        continue;
+                    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+                    if (!botAI)
+                        continue;
+                    // Set flag: the actual reequip runs on the Map thread in UpdateAI,
+                    // avoiding cross-thread Player object access that causes crashes.
+                    botAI->SetPendingReequip(true);
+                    count++;
                 }
-
-                BotFactory factory(bot, bot->GetLevel());
-                factory.InitTalentsTree(false);
-                factory.InitEquipment(false);
-                bot->SaveToDB(false);
-                count++;
             }
+
             std::ostringstream ss;
-            ss << "Reequipped " << count << " random bot(s).";
+            ss << "Scheduled reequip for " << count << " bot(s). Processing on map thread.";
             messages.push_back(ss.str());
             return messages;
         }

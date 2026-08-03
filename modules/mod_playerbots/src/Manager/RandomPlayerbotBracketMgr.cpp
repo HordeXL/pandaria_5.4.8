@@ -1,6 +1,7 @@
 #include "RandomPlayerbotBracketMgr.h"
 
 #include "Helper.h"
+#include "ObjectAccessor.h"
 #include "PlayerbotSpec.h"
 #include "RandomPlayerbotMgr.h"
 
@@ -110,13 +111,16 @@ void RandomBotBacketManager::Update(uint32 diff)
     int hordeActualCounts[NUM_RANGES] = {0};
     std::vector<Player*> hordeBotsByRange[NUM_RANGES];
 
+    // Acquire read lock to prevent iterator invalidation when other threads
+    // modify the player map (login/logout) during iteration.
+    TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
     auto const& allPlayers = ObjectAccessor::GetPlayers();
     for (auto const& itr : allPlayers)
     {
         Player* player = itr.second;
         if (!player || !player->IsInWorld())
             continue;
-        
+
         if (!sRandomPlayerbotMgr->IsRandomBot(GUID_LOPART(player->GetGUID())))
             continue;
 

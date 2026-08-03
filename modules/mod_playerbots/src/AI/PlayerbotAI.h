@@ -3,6 +3,7 @@
 
 #include <queue>
 #include <stack>
+#include <atomic>
 
 #include "Chat.h"
 #include "Event.h"
@@ -134,6 +135,12 @@ public:
     void ClearStrategies(BotState type);
     std::vector<std::string> GetStrategies(BotState type);
 
+    // Thread-safe flag: set from World thread (command handler), consumed on Map thread (UpdateAI).
+    // This avoids cross-thread Player object access that causes data races / crashes.
+    void SetPendingReequip(bool val) { _pendingReequip.store(val, std::memory_order_relaxed); }
+    bool IsPendingReequip() const { return _pendingReequip.load(std::memory_order_relaxed); }
+    void DoReequip();
+
     Player* GetBot() { return bot; }
     Player* GetMaster() { return master; }
     Player* GetGroupMaster();
@@ -243,6 +250,7 @@ protected:
     //static std::set<std::string> unsecuredCommands;
     bool _allowActive[MAX_ACTIVITY_TYPE];
     time_t _allowActiveCheckTimer[MAX_ACTIVITY_TYPE];
+    std::atomic<bool> _pendingReequip{ false };
     //bool inCombat = false;
     //BotCheatMask cheatMask = BotCheatMask::none;
     //Position jumpDestination = Position();

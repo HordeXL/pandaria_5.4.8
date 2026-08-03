@@ -524,6 +524,9 @@ bool BotFactory::CanEquipUnseenItem(uint8 slot, uint16& dest, uint32 item)
 
 bool BotFactory::CanEquipItem(ItemTemplate const* proto)
 {
+    if (!proto)
+        return false;
+
     if (proto->Duration != 0)
         return false;
 

@@ -28,7 +28,15 @@ public:
 
 std::vector<uint32> RandomItemManager::GetCachedEquipments(uint32 requiredLevel, uint32 inventoryType)
 {
-    return _equipCacheNew[requiredLevel][inventoryType];
+    // Use find() instead of operator[] to avoid concurrent map modification
+    // when multiple map threads call this simultaneously.
+    auto levelIt = _equipCacheNew.find(requiredLevel);
+    if (levelIt == _equipCacheNew.end())
+        return {};
+    auto invIt = levelIt->second.find(inventoryType);
+    if (invIt == levelIt->second.end())
+        return {};
+    return invIt->second;
 }
 
 void RandomItemManager::Init()
@@ -82,6 +90,8 @@ void RandomItemManager::Init()
             if (uint32 itemId = quest->RewardChoiceItemId[j])
             {
                 ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+                if (!proto)
+                    continue;
                 if (proto->Class != ITEM_CLASS_WEAPON && proto->Class != ITEM_CLASS_ARMOR)
                     continue;
                 int requiredLevel = std::max((int)proto->RequiredLevel, quest->GetQuestLevel());
@@ -93,6 +103,8 @@ void RandomItemManager::Init()
             if (uint32 itemId = quest->RewardItemId[j])
             {
                 ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+                if (!proto)
+                    continue;
                 if (proto->Class != ITEM_CLASS_WEAPON && proto->Class != ITEM_CLASS_ARMOR)
                     continue;
                 int requiredLevel = std::max((int)proto->RequiredLevel, quest->GetQuestLevel());
@@ -703,7 +715,18 @@ uint32 RandomItemManager::FindBestItemForLevelAndEquip(Player* bot, InventoryTyp
     for (uint32 requiredLevel = bot->GetLevel(); requiredLevel > std::max((int32)bot->GetLevel() - delta, 0); requiredLevel--)
     {
         std::mt19937 gen(std::chrono::system_clock::now().time_since_epoch().count());
-        auto& items = _equipCacheNew[requiredLevel][invType];
+        // Use find() instead of operator[] to avoid concurrent map modification
+        // when multiple map threads call this simultaneously.
+        auto levelIt = _equipCacheNew.find(requiredLevel);
+        if (levelIt == _equipCacheNew.end())
+            continue;
+        auto invIt = levelIt->second.find(invType);
+        if (invIt == levelIt->second.end())
+            continue;
+        // Copy to local vector to avoid data race on shared _equipCacheNew.
+        auto items = invIt->second;
+        if (items.empty())
+            continue;
         std::shuffle(items.begin(), items.end(), gen);
 
         for (auto it = items.end(); it != items.begin(); )
@@ -715,6 +738,8 @@ uint32 RandomItemManager::FindBestItemForLevelAndEquip(Player* bot, InventoryTyp
             if (IsTestItem(itemID)) continue;
 
             ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemID);
+            if (!proto)
+                continue;
             if (proto->RequiredLevel > level) continue;
             if ((proto->AllowableClass & bot->GetClassMask()) == 0 || (proto->AllowableRace & bot->GetRaceMask()) == 0) continue;
             if (level < 10 && proto->ItemLevel > 100) continue;

@@ -23,6 +23,7 @@
 #include <string>
 
 #include "AiFactory.h"
+#include "BotFactory.h"
 #include "ChannelMgr.h"
 #include "CreatureAIImpl.h"
 #include "Engine.h"
@@ -238,6 +239,14 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     if (!bot || !bot->IsInWorld() || !bot->GetSession() || bot->GetSession()->isLogingOut() ||
         bot->IsDuringRemoveFromWorld())
         return;
+
+    // Handle pending reequip request (executed on Map thread to avoid cross-thread data races)
+    if (IsPendingReequip())
+    {
+        SetPendingReequip(false);
+        DoReequip();
+        return; // Skip normal AI update this tick
+    }
 
     AllowActivity();
 
@@ -3037,4 +3046,35 @@ bool PlayerbotAI::HasAggro(Unit* unit)
         return true;
     }
     return false;
+}
+
+void PlayerbotAI::DoReequip()
+{
+    // This method runs on the Map thread (via Player::Update -> UpdateAI),
+    // so all Player object access is thread-safe here.
+
+    if (!bot || !bot->IsInWorld() || !bot->GetSession())
+        return;
+
+    // Skip if bot is in combat — equipment changes mid-combat cause issues.
+    if (bot->IsInCombat())
+        return;
+
+    // Ensure specialization is set first
+    if (bot->GetSpecialization() == Specializations::SPEC_NONE && bot->GetLevel() >= 10)
+    {
+        uint32 tabCount = (bot->GetClass() == CLASS_DRUID) ? 4 : 3;
+        uint32 tab = std::rand() % tabCount;
+        WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
+        p << tab;
+        bot->GetSession()->HandeSetTalentSpecialization(p);
+        bot->ActivateSpec(0);
+    }
+
+    BotFactory factory(bot, bot->GetLevel());
+    factory.InitTalentsTree(false);
+    factory.InitEquipment(false, true);
+    bot->SaveToDB(false);
+
+    TC_LOG_INFO("playerbots", "Bot %s reequipped on map thread.", bot->GetName().c_str());
 }
