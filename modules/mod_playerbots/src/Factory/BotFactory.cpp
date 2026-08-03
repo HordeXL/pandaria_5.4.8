@@ -183,6 +183,12 @@ void BotFactory::Refresh()
     uint32 money = urand(level * 1000, level * 5 * 1000);
     if (bot->GetMoney() < money)
         bot->SetMoney(money);
+
+    // Ensure specialization is set before equipment refresh
+    if (bot->GetSpecialization() == Specializations::SPEC_NONE && bot->GetLevel() >= 10)
+        InitTalentsTree(true);
+
+    InitEquipment(true);
 }
  
 void BotFactory::InitPet()

@@ -30,12 +30,6 @@ void AutoMaintenanceOnLevelupAction::AutoTeleportForLevel()
 
 void AutoMaintenanceOnLevelupAction::AutoPickTalents()
 {
-    if (!sRandomPlayerbotMgr->IsRandomBot(bot))
-        return;
-
-    //if (!sPlayerbotAIConfig->autoPickTalents || !sRandomPlayerbotMgr->IsRandomBot(bot))
-        //return;
-
     if ((bot->CalculateTalentsPoints() - bot->GetUsedTalentCount()) <= 0)
         return;
 
@@ -49,8 +43,6 @@ void AutoMaintenanceOnLevelupAction::AutoPickTalents()
 
 void AutoMaintenanceOnLevelupAction::AutoUpgradeEquip()
 {
-    if (!sRandomPlayerbotMgr->IsRandomBot(bot)) return;
-
     BotFactory factory(bot, bot->GetLevel());
     factory.InitEquipment(true);
     factory.InitPet();

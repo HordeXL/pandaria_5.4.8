@@ -839,8 +839,8 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
         Player* target = ObjectAccessor::FindPlayer(master->GetTarget());
         if (!target)
         {
-            messages.push_back("Usage: select a bot target, then type: .npcbot reequip");
-            messages.push_back("Or reequip all bots: .npcbot rndbot reequip");
+            messages.push_back("Usage: select a bot target, then type: .bot reequip");
+            messages.push_back("Or reequip all bots: .bot rndbot reequip");
             return messages;
         }
 
@@ -861,7 +861,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
     {
         if (!charname)
         {
-            messages.push_back("Usage: .npcbot rndbot reequip - reequip all online bots");
+            messages.push_back("Usage: .bot rndbot reequip - reequip all online bots");
             return messages;
         }
 
