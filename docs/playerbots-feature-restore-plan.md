@@ -27,27 +27,29 @@
 
 ## 2. 待恢复清单总览
 
-| 编号 | 优先级 | 功能 | 位置 | 恢复成本 |
-|---|---|---|---|---|
-| R1 | P0 | 登出轮换的 logout 事件补充 | `RandomPlayerbotMgr.cpp:378-396` | 低 |
-| R2 | P0 | LFG/副本排队活跃检测 | `PlayerbotAI.cpp:627-642` | 低 |
-| R3 | P0 | 开锁/剥皮 `CMSG_GAMEOBJ_USE` | `PlayerbotAI.cpp:2426-2443` | 低 |
-| R4 | P0 | 被控状态(root/stun/confuse)检查 | `PlayerbotAI.cpp:1303-1304` | 低 |
-| R5 | P0 | 术士灵魂碎片检查 | `WarlockActions.cpp:11` | 低 |
-| R6 | P1 | 真人公会活跃 `IsInRealGuild` | `PlayerbotAI.cpp:562-568` | 中 |
-| R7 | P1 | 好友/邻近玩家活跃判定 | `PlayerbotAI.cpp:571-574, 645-668` | 中 |
-| R8 | P1 | 升级自动传送/换装 | `AutoMaintenanceOnLevelupAction.cpp:20-58` | 中 |
-| R9 | P1 | 玩家登录自动登录 bot | `PlayerbotMgr.cpp:1275-1305` | 中 |
-| R10 | P1 | 正常登出流程(取消强制即时登出) | `PlayerbotMgr.cpp:382-402` | 中 |
-| R11 | P1 | `idleBot` 空闲判断恢复 | `RandomPlayerbotMgr.cpp:439-449` | 低 |
-| R12 | P1 | 防拥挤传送 / RPG 目的地传送 | `RandomPlayerbotMgr.cpp:1001-1057` | 中 |
-| R13 | P2 | bot 活跃百分比(核心活动开关) | `PlayerbotAI.cpp:676-705` | 高 |
-| R14 | P2 | Flee 逃跑行为 | `MovementActions.cpp:816+` | 高 |
-| R15 | P2 | 等级随在线玩家同步 | `RandomPlayerbotMgr.cpp:530-532` | 高 |
-| R16 | P2 | 战场夺旗判断 | `ChooseTargetActions.cpp:15-24, 107-108` | 中 |
-| R17 | P2 | 战场死亡等待复活 aura | `ReleaseSpiritAction.cpp:53-79` | 中 |
-| R18 | P2 | 副本策略 `applyInstanceStrategies` | `PlayerbotAI.cpp:789-790, 1089-1090` | 高 |
-| R19 | 忽略 | 旧实现被替代(见 3.4 节) | — | — |
+> 状态图例:✅ 已恢复(提交 `bd73e1f`/`94131ef`)· ⛔ 不恢复(原因见 3.x 节)· ⬜ 待恢复
+
+| 编号 | 优先级 | 功能 | 位置 | 恢复成本 | 状态 |
+|---|---|---|---|---|---|
+| R1 | P0 | 登出轮换的 logout 事件补充 | `RandomPlayerbotMgr.cpp:378-396` | 低 | ✅ 已恢复 |
+| R2 | P0 | LFG/副本排队活跃检测 | `PlayerbotAI.cpp:627-642` | 低 | ✅ 已恢复 |
+| R3 | P0 | 开锁/剥皮 `CMSG_GAMEOBJ_USE` | `PlayerbotAI.cpp:2426-2443` | 低 | ✅ 已恢复 |
+| R4 | P0 | 被控状态(root/stun/confuse)检查 | `PlayerbotAI.cpp:1303-1304` | 低 | ✅ 已恢复 |
+| R5 | P0 | 术士灵魂碎片检查 | `WarlockActions.cpp:11` | 低 | ✅ 已恢复 |
+| R6 | P1 | 真人公会活跃 `IsInRealGuild` | `PlayerbotAI.cpp:562-568` | 中 | ✅ 已恢复 |
+| R7 | P1 | 好友/邻近玩家活跃判定 | `PlayerbotAI.cpp:571-574, 645-668` | 中 | ✅ 已恢复 |
+| R8 | P1 | 升级自动传送/换装 | `AutoMaintenanceOnLevelupAction.cpp:20-58` | 中 | ✅ 已恢复 |
+| R9 | P1 | 玩家登录自动登录 bot | `PlayerbotMgr.cpp:1275-1305` | 中 | ✅ 已恢复 |
+| R10 | P1 | 正常登出流程(取消强制即时登出) | `PlayerbotMgr.cpp:382-402` | 中 | ⛔ 不恢复(见 3.10) |
+| R11 | P1 | `idleBot` 空闲判断恢复 | `RandomPlayerbotMgr.cpp:439-449` | 低 | ⛔ 不恢复(见 3.11) |
+| R12 | P1 | 防拥挤传送 / RPG 目的地传送 | `RandomPlayerbotMgr.cpp:1001-1057` | 中 | ✅ 已恢复 |
+| R13 | P2 | bot 活跃百分比(核心活动开关) | `PlayerbotAI.cpp:676-705` | 高 | ⬜ 待恢复 |
+| R14 | P2 | Flee 逃跑行为 | `MovementActions.cpp:816+` | 高 | ⬜ 待恢复 |
+| R15 | P2 | 等级随在线玩家同步 | `RandomPlayerbotMgr.cpp:530-532` | 高 | ⬜ 待恢复 |
+| R16 | P2 | 战场夺旗判断 | `ChooseTargetActions.cpp:15-24, 107-108` | 中 | ⬜ 待恢复 |
+| R17 | P2 | 战场死亡等待复活 aura | `ReleaseSpiritAction.cpp:53-79` | 中 | ⬜ 待恢复 |
+| R18 | P2 | 副本策略 `applyInstanceStrategies` | `PlayerbotAI.cpp:789-790, 1089-1090` | 高 | ⬜ 待恢复 |
+| R19 | 忽略 | 旧实现被替代(见 3.4 节) | — | — | — |
 
 ---
 
