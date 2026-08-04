@@ -18,6 +18,7 @@
 
 #include "Playerbots.h"
 #include "PlayerbotAIConfig.h"
+#include "PlayerbotTextMgr.h"
 #include "RandomPlayerbotMgr.h"
 #include "RandomItemManager.h"
 #include "RandomPlayerbotBracketMgr.h"
@@ -73,6 +74,7 @@ public:
                 return;
             }
             sPlayerbotAIConfig->Initialize();
+            sPlayerbotTextMgr->Initialize();
 
             TC_LOG_INFO("playerbots", ">> Loaded playerbots config in %u ms", GetMSTimeDiffToNow(oldMSTime));
             TC_LOG_INFO("playerbots", " ");
@@ -141,6 +143,24 @@ public:
         }
 
         sRandomPlayerbotMgr->OnPlayerLogout(player);
+    }
+
+    void OnChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Channel* channel) override
+    {
+        sRandomPlayerbotMgr->OnChannelChat(player, channel, msg, lang);
+    }
+
+    void OnChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Player* receiver) override
+    {
+        sRandomPlayerbotMgr->OnWhisperToBot(player, receiver, msg, lang);
+    }
+
+    void OnPlayerGroupInviteDecline(Player* decliner, Player* leader) override
+    {
+        if (!decliner || !leader)
+            return;
+        if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(leader))
+            botAI->OnInviteDeclined(decliner);
     }
 };
 void AddSC_mod_playerbots()

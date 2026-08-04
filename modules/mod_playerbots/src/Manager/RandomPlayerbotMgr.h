@@ -2,6 +2,7 @@
 #define _PLAYERBOT_RANDOMPLAYERBOTMGR_H
 
 #include "PlayerbotMgr.h"
+#include <atomic>
 #include <mutex>
 
 class CachedEvent
@@ -27,6 +28,7 @@ public:
 };
 
 class Player;
+class Channel;
 struct ObjectGuid;
 class RandomPlayerbotMgr : public PlayerbotHolder
 {
@@ -88,6 +90,15 @@ public:
 public:
     bool IsRandomBot(Player* bot);
     bool IsRandomBot(uint32 bot);
+
+    // Bot chat: reply to players speaking in channels / whispering a bot.
+    // Invoked from PlayerScript::OnChat (core ChatHandler already calls the
+    // OnPlayerChat hooks for channel messages; the whisper hook was added there).
+    void OnChannelChat(Player* speaker, Channel* channel, std::string const& msg, uint32 lang);
+    void OnWhisperToBot(Player* speaker, Player* receiver, std::string const& msg, uint32 lang);
+    // Global throttle shared with PlayerbotAI proactive channel chatter.
+    bool TryChannelChat(uint32 cooldownMs);
+    bool TryWhisperChat(uint32 cooldownMs);
 
     void TagForRandomize(Player* bot, uint32 level);
     void RandomizeFirst(Player* bot);
@@ -157,6 +168,8 @@ private:
 
     // -- lists
     std::recursive_mutex _dataMutex;
+    std::atomic<uint32> _lastChannelChatMs{0};
+    std::atomic<uint32> _lastWhisperChatMs{0};
     std::map<uint32, std::map<std::string, CachedEvent>> _eventCache;
     std::map<uint8, std::vector<ObjectGuid>> _addclassCache;
     std::vector<city> _city_cache_data;

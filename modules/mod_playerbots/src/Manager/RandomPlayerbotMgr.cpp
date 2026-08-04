@@ -43,6 +43,7 @@
 #include "Player.h"
 #include "PlayerbotAI.h"
 #include "PlayerbotAIConfig.h"
+#include "PlayerbotTextMgr.h"
 #include "PerformanceMonitor.h"
 #include "Playerbots.h"
 #include "RandomItemManager.h"
@@ -235,7 +236,10 @@ uint32 RandomPlayerbotMgr::AddRandomBots()
 
             for (uint32& guid : guids)
             {
-                uint32 add_time = 31104000;
+                // Rotation: each bot stays in the pool (and in the world) for a
+                // random duration. When the "add" event expires, ProcessBot logs
+                // the bot out and AddRandomBots picks a fresh bot to replace it.
+                uint32 add_time = urand(sPlayerbotAIConfig->minRandomBotInWorldTime, sPlayerbotAIConfig->maxRandomBotInWorldTime);
 
                 SetEventValue(guid, "add", 1, add_time);
                 SetEventValue(guid, "logout", 0, 0);
@@ -828,6 +832,85 @@ void RandomPlayerbotMgr::OnPlayerLogout(Player* player)
         std::lock_guard<std::mutex> guard(_playersMutex);
         _players.erase(i);
     }
+}
+
+void RandomPlayerbotMgr::OnChannelChat(Player* speaker, Channel* channel, std::string const& msg, uint32 lang)
+{
+    if (!speaker || !channel || !sPlayerbotAIConfig->enabled)
+        return;
+    if (msg.empty() || GET_PLAYERBOT_AI(speaker))
+        return;  // only real players trigger replies
+    if (!TryChannelChat(15000))  // global 15s throttle against spam
+        return;
+
+    std::vector<Player*> players = GetPlayers();
+    if (players.empty())
+        return;
+
+    // collect random bots that have joined this channel
+    std::vector<Player*> candidates;
+    for (Player* bot : players)
+    {
+        if (!bot || !bot->IsInWorld() || !IsRandomBot(bot) || bot->GetGUID() == speaker->GetGUID())
+            continue;
+        if (std::find(bot->GetChannels().begin(), bot->GetChannels().end(), channel) == bot->GetChannels().end())
+            continue;
+        candidates.push_back(bot);
+    }
+
+    if (candidates.empty())
+        return;
+
+    // ~30% chance a random bot answers
+    if (urand(0, 99) >= 30)
+        return;
+
+    Player* bot = candidates[urand(0, candidates.size() - 1)];
+    std::string text = sPlayerbotTextMgr->GetRandomText("reply");
+    if (text.empty())
+        return;
+
+    channel->Say(bot->GetGUID(), text, lang);
+}
+
+void RandomPlayerbotMgr::OnWhisperToBot(Player* speaker, Player* receiver, std::string const& msg, uint32 lang)
+{
+    if (!speaker || !receiver || !sPlayerbotAIConfig->enabled)
+        return;
+    if (msg.empty() || GET_PLAYERBOT_AI(speaker))
+        return;  // only real players trigger replies
+    if (speaker->GetGUID() == receiver->GetGUID())
+        return;
+    if (!IsRandomBot(receiver) || !receiver->IsInWorld())
+        return;
+    if (!TryWhisperChat(15000))  // global 15s throttle against spam
+        return;
+    if (urand(0, 99) >= 50)
+        return;
+
+    std::string text = sPlayerbotTextMgr->GetRandomText("reply");
+    if (text.empty())
+        return;
+
+    receiver->Whisper(text, lang, speaker->GetGUID());
+}
+
+bool RandomPlayerbotMgr::TryChannelChat(uint32 cooldownMs)
+{
+    uint32 now = getMSTime();
+    uint32 last = _lastChannelChatMs.load(std::memory_order_relaxed);
+    if (now - last < cooldownMs)
+        return false;
+    return _lastChannelChatMs.compare_exchange_strong(last, now, std::memory_order_relaxed);
+}
+
+bool RandomPlayerbotMgr::TryWhisperChat(uint32 cooldownMs)
+{
+    uint32 now = getMSTime();
+    uint32 last = _lastWhisperChatMs.load(std::memory_order_relaxed);
+    if (now - last < cooldownMs)
+        return false;
+    return _lastWhisperChatMs.compare_exchange_strong(last, now, std::memory_order_relaxed);
 }
 
 void RandomPlayerbotMgr::OnBotLoginInternal(Player* const bot)

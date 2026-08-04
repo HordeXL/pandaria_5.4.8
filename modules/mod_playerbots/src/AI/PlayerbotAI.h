@@ -4,6 +4,8 @@
 #include <queue>
 #include <stack>
 #include <atomic>
+#include <map>
+#include <mutex>
 
 #include "Chat.h"
 #include "Event.h"
@@ -223,7 +225,15 @@ public:
     bool Yell(const std::string& msg);
     bool SayToRaid(const std::string& msg);
     bool SayToParty(const std::string& msg);
+    bool SayToRandomChannel();
+
+    // Group-invite decline handling: after a player declines this bot's invite
+    // twice, this bot stops inviting that player for 2 hours (per-bot state).
+    void OnInviteDeclined(Player* decliner);
+    bool IsInviteBlocked(Player* player);
     bool TellError(std::string const text);
+    bool Talk(const std::string& name);
+    bool Talk(const std::string& name, const std::map<std::string, std::string>& vars);
 private:
     bool _isBotInitializing;
 
@@ -251,6 +261,12 @@ protected:
     bool _allowActive[MAX_ACTIVITY_TYPE];
     time_t _allowActiveCheckTimer[MAX_ACTIVITY_TYPE];
     std::atomic<bool> _pendingReequip{ false };
+    uint32 _lastItemCount = 0;
+    uint32 _lootChatDelay = 0;
+    uint32 _nextChannelChatTime = 0;
+    std::map<uint32, uint8> _inviteDeclineCounts;      // player low GUID -> decline count
+    std::map<uint32, uint32> _inviteBlockedUntil;      // player low GUID -> unblock time (ms)
+    std::mutex _inviteMutex;
     //bool inCombat = false;
     //BotCheatMask cheatMask = BotCheatMask::none;
     //Position jumpDestination = Position();

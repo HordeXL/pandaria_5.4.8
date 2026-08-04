@@ -710,6 +710,9 @@ class PlayerScript : public UnitScript
         // Called when a player's level changes (after the level is applied)
         virtual void OnLevelChanged(Player* /*player*/, uint8 /*oldLevel*/) { }
 
+        // Called when a player declines a group invitation (decliner refused leader's invite; leader may be null)
+        virtual void OnPlayerGroupInviteDecline(Player* /*decliner*/, Player* /*leader*/) { }
+
         // Called when a player's item changes
         virtual void OnEquipChanged(Player* /*player*/, uint32 /*item*/) { }
 
@@ -1193,6 +1196,7 @@ class ScriptMgr
         void OnGroupRemoveMember(Group* group, uint64 guid, RemoveMethod method, uint64 kicker, const char* reason);
         void OnGroupChangeLeader(Group* group, uint64 newLeaderGuid, uint64 oldLeaderGuid);
         void OnGroupDisband(Group* group);
+        void OnPlayerGroupInviteDecline(Player* decliner, Player* leader);
 
     public: /* GameEventScript */
         bool CanGameEventStart(GameEventData const& event, bool shouldStart);

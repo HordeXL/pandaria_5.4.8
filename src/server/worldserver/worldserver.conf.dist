@@ -82,6 +82,22 @@ DataDir = "Data"
 LogsDir = "Logs"
 
 #
+#    Eluna.Enabled
+#        Description: Enable or disable the Eluna Lua engine.
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+
+Eluna.Enabled = 1
+
+#
+#    Eluna.ScriptPath
+#        Description: Path to the directory containing the Lua scripts, relative to the
+#                     worldserver working directory.
+#        Default:     "lua_scripts"
+
+Eluna.ScriptPath = "lua_scripts"
+
+#
 #    LoginDatabaseInfo
 #    WorldDatabaseInfo
 #    CharacterDatabaseInfo

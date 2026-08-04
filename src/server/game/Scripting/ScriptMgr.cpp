@@ -1443,6 +1443,11 @@ void ScriptMgr::OnGroupDisband(Group* group)
     FOREACH_SCRIPT(GroupScript)->OnDisband(group);
 }
 
+void ScriptMgr::OnPlayerGroupInviteDecline(Player* decliner, Player* leader)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnPlayerGroupInviteDecline(decliner, leader);
+}
+
 // GameEvent
 bool ScriptMgr::CanGameEventStart(GameEventData const& event, bool shouldStart)
 {

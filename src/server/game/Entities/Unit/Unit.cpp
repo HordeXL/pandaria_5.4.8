@@ -13778,7 +13778,9 @@ void Unit::RemoveFromWorld()
             if (owner->m_Controlled.find(this) != owner->m_Controlled.end())
             {
                 TC_LOG_FATAL("entities.unit", "Unit %u is in controlled list of %u when removed from world", GetEntry(), owner->GetEntry());
-                ASSERT(false);
+                // Defensive fix: the owner was removed from the world without releasing us
+                // (e.g. logout mid-teleport). Drop the stale reference instead of crashing.
+                owner->m_Controlled.erase(this);
             }
         }
 

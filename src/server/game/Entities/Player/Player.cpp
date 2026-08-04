@@ -6069,6 +6069,11 @@ void Player::CleanupChannels()
     TC_LOG_DEBUG("chat.system", "Player %s: channels cleaned up!", GetName().c_str());
 }
 
+std::list<Channel*> const& Player::GetChannels() const
+{
+    return m_channels;
+}
+
 void Player::UpdateLocalChannels(uint32 newZone)
 {
     if (GetSession()->PlayerLoading() && !IsBeingTeleportedFar())

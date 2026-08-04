@@ -413,6 +413,8 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
                 sender->AddWhisperWhiteList(receiver->GetGUID());
 
             GetPlayer()->Whisper(msg, lang, receiver->GetGUID());
+
+            sScriptMgr->OnPlayerChat(GetPlayer(), type, lang, msg, receiver);
         } break;
         case CHAT_MSG_PARTY:
         case CHAT_MSG_PARTY_LEADER:

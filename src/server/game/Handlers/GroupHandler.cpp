@@ -24,6 +24,7 @@
 #include "Opcodes.h"
 #include "Pet.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "SocialMgr.h"
 #include "SpellAuras.h"
 #include "Util.h"
@@ -364,6 +365,8 @@ void WorldSession::HandleGroupInviteResponseOpcode(WorldPacket& recvData)
 
         // uninvite, group can be deleted
         GetPlayer()->UninviteFromGroup();
+
+        sScriptMgr->OnPlayerGroupInviteDecline(GetPlayer(), leader);
 
         if (!leader || !leader->GetSession())
             return;

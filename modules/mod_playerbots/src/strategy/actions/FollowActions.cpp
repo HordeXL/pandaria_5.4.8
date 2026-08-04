@@ -210,6 +210,8 @@ bool InviteNearbyAction::Execute(Event /*event*/)
             continue;
         if (player->GetGroup() || player->GetGroupInvite())
             continue;
+        if (botAI->IsInviteBlocked(player))
+            continue;
         if (player->GetTeamId() != bot->GetTeamId())
             continue;
         if (!bot->IsWithinDistInMap(player, sPlayerbotAIConfig->sightDistance))
@@ -243,6 +245,8 @@ bool InviteGuildAction::Execute(Event /*event*/)
         if (player->GetGuildId() != guildId)
             continue;
         if (player->GetGroup() || player->GetGroupInvite())
+            continue;
+        if (botAI->IsInviteBlocked(player))
             continue;
         if (!bot->IsWithinDistInMap(player, sPlayerbotAIConfig->sightDistance))
             continue;

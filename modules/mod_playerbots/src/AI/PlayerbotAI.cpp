@@ -43,6 +43,7 @@
 #include "Playerbots.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotSpec.h"
+#include "PlayerbotTextMgr.h"
 #include "PerformanceMonitor.h"
 #include "RandomPlayerbotMgr.h"
 #include "ServerFacade.h"
@@ -366,6 +367,20 @@ void PlayerbotAI::UpdateAIInternal([[maybe_unused]] uint32 elapsed, bool minimal
     botOutgoingPacketHandlers.Handle(helper);
     masterIncomingPacketHandlers.Handle(helper);
     masterOutgoingPacketHandlers.Handle(helper);
+
+    // Proactive channel chatter: random bots (level >= 10) occasionally say
+    // something in a channel they joined (prefers World). Global throttle is
+    // shared with channel replies to avoid spam.
+    if (bot->GetLevel() >= 10 && sRandomPlayerbotMgr->IsRandomBot(bot))
+    {
+        uint32 now = getMSTime();
+        if (now >= _nextChannelChatTime)
+        {
+            _nextChannelChatTime = now + urand(10, 15) * IN_MILLISECONDS;  // next try in 10-15 sec
+            if (urand(0, 99) < 50 && sRandomPlayerbotMgr->TryChannelChat(15000))
+                SayToRandomChannel();
+        }
+    }
 
     DoNextAction(minimal);
 
@@ -1361,32 +1376,16 @@ bool PlayerbotAI::SayToParty(const std::string& msg)
     if (!bot->GetGroup())
         return false;
 
-    /*WorldPacket data;
-    ChatHandler::BuildChatPacket(data, CHAT_MSG_PARTY, msg.c_str(), LANG_UNIVERSAL, CHAT_TAG_NONE, bot->GetGUID(),
-        bot->GetName());
-
-    for (auto reciever : GetPlayersInGroup())
-    {
-        sServerFacade->SendPacket(reciever, &data);
-    }*/
-
+    Say(msg);
     return true;
 }
 
 bool PlayerbotAI::SayToRaid(const std::string& msg)
 {
-    if (!bot->GetGroup() || bot->GetGroup()->isRaidGroup())
+    if (!bot->GetGroup() || !bot->GetGroup()->isRaidGroup())
         return false;
 
-    /*WorldPacket data;
-    ChatHandler::BuildChatPacket(data, CHAT_MSG_RAID, msg.c_str(), LANG_UNIVERSAL, CHAT_TAG_NONE, bot->GetGUID(),
-        bot->GetName());
-
-    for (auto reciever : GetPlayersInGroup())
-    {
-        sServerFacade->SendPacket(reciever, &data);
-    }*/
-
+    Yell(msg);
     return true;
 }
 
@@ -1413,6 +1412,86 @@ bool PlayerbotAI::Say(const std::string& msg)
     else
     {
         bot->Say(msg, LANG_ORCISH);
+    }
+
+    return true;
+}
+
+bool PlayerbotAI::SayToRandomChannel()
+{
+    if (!bot || !bot->IsInWorld())
+        return false;
+
+    std::vector<Channel*> channels;
+    for (Channel* channel : bot->GetChannels())
+        if (channel)
+            channels.push_back(channel);
+
+    if (channels.empty())
+        return false;
+
+    // prefer the World channel
+    Channel* target = nullptr;
+    for (Channel* channel : channels)
+    {
+        if (channel->GetName() == "World")
+        {
+            target = channel;
+            break;
+        }
+    }
+    if (!target)
+        target = channels[urand(0, channels.size() - 1)];
+
+    std::string text = sPlayerbotTextMgr->GetRandomText("reply");
+    if (text.empty())
+        return false;
+
+    uint32 lang = bot->GetTeamId() == TeamId::TEAM_ALLIANCE ? LANG_COMMON : LANG_ORCISH;
+    target->Say(bot->GetGUID(), text, lang);
+    return true;
+}
+
+void PlayerbotAI::OnInviteDeclined(Player* decliner)
+{
+    if (!decliner)
+        return;
+
+    std::lock_guard<std::mutex> guard(_inviteMutex);
+
+    uint32 guid = decliner->GetGUIDLow();
+
+    // already cooling down for this player, ignore further declines
+    auto blockedIt = _inviteBlockedUntil.find(guid);
+    if (blockedIt != _inviteBlockedUntil.end() && getMSTime() < blockedIt->second)
+        return;
+
+    uint8& count = _inviteDeclineCounts[guid];
+    ++count;
+    if (count >= 2)
+    {
+        // player declined twice: this bot stops inviting them for 2 hours
+        _inviteBlockedUntil[guid] = getMSTime() + 2 * 3600 * IN_MILLISECONDS;
+        _inviteDeclineCounts.erase(guid);  // restart counting after the cooldown expires
+    }
+}
+
+bool PlayerbotAI::IsInviteBlocked(Player* player)
+{
+    if (!player)
+        return false;
+
+    std::lock_guard<std::mutex> guard(_inviteMutex);
+
+    uint32 guid = player->GetGUIDLow();
+    auto it = _inviteBlockedUntil.find(guid);
+    if (it == _inviteBlockedUntil.end())
+        return false;
+
+    if (getMSTime() >= it->second)
+    {
+        _inviteBlockedUntil.erase(it);  // 2 hours elapsed, allow inviting again
+        return false;
     }
 
     return true;
@@ -1468,36 +1547,10 @@ bool PlayerbotAI::TellMasterNoFacing(std::ostringstream& stream)
 bool PlayerbotAI::TellMasterNoFacing(std::string const text)
 {
     Player* master = GetMaster();
-    PlayerbotAI* masterBotAI = nullptr;
-    if (master)
-        masterBotAI = GET_PLAYERBOT_AI(master);
-
-    /*if ((!master || (masterBotAI && !masterBotAI->IsRealPlayer())) &&
-        (sPlayerbotAIConfig->randomBotSayWithoutMaster || HasStrategy("debug", BOT_STATE_NON_COMBAT)))
-    {
-        bot->Say(text, (bot->GetTeamId() == TEAM_ALLIANCE ? LANG_COMMON : LANG_ORCISH));
-        return true;
-    }
-
-    if (!IsTellAllowed(securityLevel))
+    if (!master)
         return false;
 
-    time_t lastSaid = whispers[text];
-
-    if (!lastSaid || (time(nullptr) - lastSaid) >= sPlayerbotAIConfig->repeatDelay / 1000)
-    {
-        whispers[text] = time(nullptr);
-
-        ChatMsg type = CHAT_MSG_WHISPER;
-        if (currentChat.second - time(nullptr) >= 1)
-            type = currentChat.first;
-
-        WorldPacket data;
-        ChatHandler::BuildChatPacket(data, type == CHAT_MSG_ADDON ? CHAT_MSG_PARTY : type,
-            type == CHAT_MSG_ADDON ? LANG_ADDON : LANG_UNIVERSAL, bot, nullptr, text.c_str());
-        master->SendDirectMessage(&data);
-    }*/
-
+    bot->Whisper(text, (bot->GetTeamId() == TEAM_ALLIANCE ? LANG_COMMON : LANG_ORCISH), master->GetGUID());
     return true;
 }
 bool PlayerbotAI::TellError(std::string const text)
@@ -1510,6 +1563,37 @@ bool PlayerbotAI::TellError(std::string const text)
         mgr->TellError(bot->GetName(), text);
 
     return false;
+}
+
+bool PlayerbotAI::Talk(const std::string& name)
+{
+    std::string text = sPlayerbotTextMgr->GetRandomText(name);
+    if (text.empty())
+        return false;
+
+    Say(text);
+    return true;
+}
+
+bool PlayerbotAI::Talk(const std::string& name, const std::map<std::string, std::string>& vars)
+{
+    std::string text = sPlayerbotTextMgr->GetRandomText(name);
+    if (text.empty())
+        return false;
+
+    for (auto const& var : vars)
+    {
+        std::string placeholder = "%" + var.first;
+        size_t pos = 0;
+        while ((pos = text.find(placeholder, pos)) != std::string::npos)
+        {
+            text.replace(pos, placeholder.length(), var.second);
+            pos += var.second.length();
+        }
+    }
+
+    Say(text);
+    return true;
 }
 
 int32 PlayerbotAI::GetNearGroupMemberCount(float dis)

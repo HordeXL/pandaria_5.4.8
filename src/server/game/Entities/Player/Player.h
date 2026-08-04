@@ -2717,6 +2717,8 @@ public:
 
     bool CanJoinConstantChannelInZone(ChatChannelsEntry const* channel, AreaTableEntry const* zone);
 
+    std::list<Channel*> const& GetChannels() const;
+
     void JoinedChannel(Channel* c);
     void LeftChannel(Channel* c);
     void CleanupChannels();
