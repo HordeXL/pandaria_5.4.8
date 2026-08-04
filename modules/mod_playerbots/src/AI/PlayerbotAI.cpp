@@ -559,20 +559,19 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
     }
 
     // when in real guild
-    if (sPlayerbotAIConfig->botActiveAloneForceWhenInGuild)
+    /*if (sPlayerbotAIConfig->BotActiveAloneForceWhenInGuild)
     {
         if (IsInRealGuild())
         {
             return true;
         }
-    }
+    }*/
 
     // Player is near. Always active.
-    if (sPlayerbotAIConfig->botActiveAloneForceWhenInRadius &&
-        HasPlayerNearby(sPlayerbotAIConfig->botActiveAloneForceWhenInRadius))
+    /*if (HasPlayerNearby(sPlayerbotAIConfig->BotActiveAloneForceWhenInRadius))
     {
         return true;
-    }
+    }*/
 
     // Has player master. Always active.
     if (GetMaster())
@@ -625,73 +624,48 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
         return true;
     }
 
-    // In LFG queue (dungeon finder / raid finder). Keep active so the bot
-    // doesn't get randomized/teleported away while waiting to enter.
-    bool isLFG = false;
-    if (group)
-    {
-        for (GroupReference* gref = group->GetFirstMember(); gref && !isLFG; gref = gref->next())
-        {
-            Player* member = gref->GetSource();
-            if (!member || !member->IsInWorld())
-                continue;
-            if (lfg::PlayerQueueDataMap const* queues = sLFGMgr->GetPlayerQueues(member->GetGUID()))
-            {
-                for (lfg::PlayerQueueDataMap::const_iterator itr = queues->begin(); itr != queues->end(); ++itr)
-                {
-                    if (itr->second.State != lfg::LFG_STATE_NONE)
-                    {
-                        isLFG = true;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        if (lfg::PlayerQueueDataMap const* queues = sLFGMgr->GetPlayerQueues(bot->GetGUID()))
-        {
-            for (lfg::PlayerQueueDataMap::const_iterator itr = queues->begin(); itr != queues->end(); ++itr)
-            {
-                if (itr->second.State != lfg::LFG_STATE_NONE)
-                {
-                    isLFG = true;
-                    break;
-                }
-            }
-        }
-    }
-    if (isLFG)
-    {
-        return true;
-    }
+    //bool isLFG = false;
+    //if (group)
+    //{
+    //    if (sLFGMgr->GetState(group->GetGUID()) != lfg::LFG_STATE_NONE)
+    //    {
+    //        isLFG = true;
+    //    }
+    //}
+    //if (sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE)
+    //{
+    //    isLFG = true;
+    //}
+    //if (isLFG)
+    //{
+    //    return true;
+    //}
 
-    // HasFriend
-    if (sPlayerbotAIConfig->botActiveAloneForceWhenIsFriend)
-    {
-        for (auto& player : sRandomPlayerbotMgr->GetPlayers())
-        {
-            if (!player || !player->IsInWorld() || !player->GetSocial() || !bot->GetGUID())
-            {
-                continue;
-            }
+    //// HasFriend
+    //if (sPlayerbotAIConfig->BotActiveAloneForceWhenIsFriend)
+    //{
+    //    for (auto& player : sRandomPlayerbotMgr->GetPlayers())
+    //    {
+    //        if (!player || !player->IsInWorld() || !player->GetSocial() || !bot->GetGUID())
+    //        {
+    //            continue;
+    //        }
 
-            if (player->GetSocial()->HasFriend(bot->GetGUID()))
-            {
-                return true;
-            }
-        }
-    }
+    //        if (player->GetSocial()->HasFriend(bot->GetGUID()))
+    //        {
+    //            return true;
+    //        }
+    //    }
+    //}
 
-    // Force the bots to spread
-    if (activityType == OUT_OF_PARTY_ACTIVITY || activityType == GRIND_ACTIVITY)
-    {
-        if (HasManyPlayersNearby(10, 40))
-        {
-            return true;
-        }
-    }
+    //// Force the bots to spread
+    //if (activityType == OUT_OF_PARTY_ACTIVITY || activityType == GRIND_ACTIVITY)
+    //{
+    //    if (HasManyPlayersNearby(10, 40))
+    //    {
+    //        return true;
+    //    }
+    //}
 
     // Bots don't need to move using PathGenerator.
     if (activityType == DETAILED_MOVE_ACTIVITY)
@@ -1248,27 +1222,6 @@ bool PlayerbotAI::HasManyPlayersNearby(uint32 trigerrValue, float range)
     return false;
 }
 
-bool PlayerbotAI::IsInRealGuild()
-{
-    if (!bot->GetGuildId())
-        return false;
-
-    // The bot is considered in a "real guild" when at least one online player
-    // (not a bot) shares its guild. Offline members don't count: activity is
-    // only meaningful when a real player could actually be watching.
-    for (auto const& itr : ObjectAccessor::GetPlayers())
-    {
-        Player* player = itr.second;
-        if (!player || !player->IsInWorld() || player == bot)
-            continue;
-
-        if (player->GetGuildId() == bot->GetGuildId() && !GET_PLAYERBOT_AI(player))
-            return true;
-    }
-
-    return false;
-}
-
 bool PlayerbotAI::IsAlt()
 {
     return HasRealPlayerMaster() && !sRandomPlayerbotMgr->IsRandomBot(bot);
@@ -1347,8 +1300,8 @@ bool PlayerbotAI::CanMove()
         //return false;
 
     if (bot->isFrozen() || bot->IsPolymorphed() || (bot->isDead() && !bot->HasFlag(PLAYER_FIELD_PLAYER_FLAGS, PLAYER_FLAGS_GHOST)) ||
-        bot->IsBeingTeleported() || bot->HasUnitState(UNIT_STATE_ROOT) || bot->HasUnitState(UNIT_STATE_CONFUSED) ||
-        bot->IsCharmed() || bot->HasUnitState(UNIT_STATE_STUNNED) || bot->IsInFlight() || bot->HasUnitState(UNIT_STATE_LOST_CONTROL))
+        bot->IsBeingTeleported() /* || bot->HasRootAura() || bot->HasSpiritOfRedemptionAura() || bot->HasConfuseAura()*/ ||
+        bot->IsCharmed() /* || bot->HasStunAura()*/ || bot->IsInFlight() || bot->HasUnitState(UNIT_STATE_LOST_CONTROL))
         return false;
 
     return bot->GetMotionMaster()->GetCurrentMovementGeneratorType() != FLIGHT_MOTION_TYPE;
@@ -2470,32 +2423,24 @@ bool PlayerbotAI::CastSpell(uint32 spellId, Unit* target, Item* itemTarget)
 
     if (spellInfo->Effects[0].Effect == SPELL_EFFECT_OPEN_LOCK || spellInfo->Effects[0].Effect == SPELL_EFFECT_SKINNING)
     {
-        // Interact with the current loot target so lockpicking/skinning actually
-        // registers with the object. Uses GameObject::Use instead of the old
-        // CMSG_GAMEOBJ_USE packet, which no longer matches the 5.4.8
-        // compressed-guid opcode format.
-        if (uint64 lootGuid = bot->GetLootGUID())
+        /*LootObject loot = *aiObjectContext->GetValue<LootObject>("loot target");
+        GameObject* go = GetGameObject(loot.guid);
+        if (go && go->isSpawned())
         {
-            if (GameObject* go = ObjectAccessor::GetGameObject(*bot, ObjectGuid(lootGuid)))
-            {
-                if (go->isSpawned())
-                {
-                    go->Use(bot);
-                    targets.SetGOTarget(go);
-                    faceTo = go;
-                }
-            }
-            else if (Unit* creature = ObjectAccessor::GetUnit(*bot, ObjectGuid(lootGuid)))
+            WorldPacket packetgouse(CMSG_GAMEOBJ_USE, 8);
+            packetgouse << loot.guid;
+            bot->GetSession()->HandleGameObjectUseOpcode(packetgouse);
+            targets.SetGOTarget(go);
+            faceTo = go;
+        }
+        else
+        {
+            if (Unit* creature = GetUnit(loot.guid))
             {
                 targets.SetUnitTarget(creature);
                 faceTo = creature;
             }
-        }
-        else if (Unit* creature = GetUnit(target ? target->GetGUID() : ObjectGuid()))
-        {
-            targets.SetUnitTarget(creature);
-            faceTo = creature;
-        }
+        }*/
     }
 
     if (bot->isMoving() && spell->GetCastTime())

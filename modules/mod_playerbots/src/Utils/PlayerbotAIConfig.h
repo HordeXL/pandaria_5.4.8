@@ -70,11 +70,6 @@ public:
     uint32 randomBotsPerInterval;
     float randomChangeMultiplier;
     bool randomBotLoginAtStartup;
-    bool autoTeleportForLevel;
-    bool botAutologin;
-    bool botActiveAloneForceWhenInGuild;
-    uint32 botActiveAloneForceWhenInRadius;
-    bool botActiveAloneForceWhenIsFriend;
     bool randomBotInvitePlayer, randomBotGuildNearby, inviteChat;
     std::string randomBotAccountPrefix;
     uint32 randomBotAccountCount;

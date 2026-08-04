@@ -169,8 +169,6 @@ public:
     bool HasPlayerNearby(WorldPosition* pos, float range = sPlayerbotAIConfig->reactDistance);
     bool HasPlayerNearby(float range = sPlayerbotAIConfig->reactDistance);
     bool HasManyPlayersNearby(uint32 trigerrValue = 20, float range = sPlayerbotAIConfig->sightDistance);
-    // True if the bot is in a guild that has at least one online real player.
-    bool IsInRealGuild();
 
     // Check if player is safe to use.
     bool IsSafe(Player* player);
