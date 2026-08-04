@@ -20,6 +20,8 @@
 | 日期 | 功能 | 改动 |
 |---|---|---|
 | 2024-08-04 | 随机机器人**下线轮换** | `RandomPlayerbotMgr.cpp` `AddRandomBots()`:`add_time = 31104000` → `urand(minRandomBotInWorldTime, maxRandomBotInWorldTime)`,利用既有 `ProcessBot()` 的 `!isValid` 分支完成下线+补位。已编译部署(`worldserver.exe.bak` 可回滚) |
+| 2024-08-05 | **P0 批**(R1-R5) | 见提交 `bd73e1f`;R1 登出冷却、R2 LFG 活跃、R3 开锁/剥皮(重写为 `GetLootGUID`+`GameObject::Use`)、R4 被控状态、R5 灵魂碎片 |
+| 2024-08-05 | **P1 批**(R6-R9, R12) | 见提交 `94131ef`;R6 `IsInRealGuild`、R7 邻近/好友活跃、R8 升级传送、R9 玩家登录 botAutologin、R12 防拥挤传送。**R10 有意保留**(Peiru 防御修改,见 3.10)、**R11 不恢复**(TravelTarget 系统已删除,见 3.11) |
 
 ---
 
@@ -136,21 +138,23 @@
 - **风险**:中(涉及账号/角色遍历,注意死锁)
 - **验证**:配置开启后玩家上线自动带 bot
 
-### 3.10 R10 — 正常登出流程(P1)
+### 3.10 R10 — 正常登出流程(P1,有意保留)
 
 - **位置**:`PlayerbotMgr.cpp:382-402`
 - **现状**:`logout = true;`(Peiru 为规避崩溃强制即时登出),使 386-411 正常登出(`TellMaster("I'm logging out!")` + `CMSG_LOGOUT_REQUEST`)成为死代码;`PlayerbotAI::Reset` 的 `CMSG_LOGOUT_CANCEL`(`:733-735`)也被注释
 - **恢复步骤**:删除 `:383` 强制行,恢复正常登出;同时恢复 `:301-303, 320-321, 733-735` 的取消登出处理
 - **风险**:高(Peiru 注释写明是为解决登出崩溃,恢复后需重点回归测试登出)
+- **结论(2024-08-05)**:**有意保留不恢复**。该行为明确标注"为解决登出崩溃"的防御修改;恢复正常登出流程在运营中的服务器上风险大于收益(收益仅为更真实的登出表现)。如确需恢复,建议在测试服验证批量登出无崩溃后再上线。
 - **验证**:多 bot 同时登出无崩溃;`I'm logging out!` 正常发送
 
-### 3.11 R11 — idleBot 空闲判断(P1)
+### 3.11 R11 — idleBot 空闲判断(P1,不恢复)
 
 - **位置**:`RandomPlayerbotMgr.cpp:439-449`
 - **现状**:`TravelTarget` 判断被注释,`idleBot` 恒 true → 有目标(做任务/赶路)的 bot 也会被随机化/传送
 - **恢复步骤**:取消注释;`TravelTarget` 相关 API 需确认(`getTravelState()` 等)
 - **依赖**:`TravelTarget` 类是否仍存在于 `AiObjectContext` Value
 - **风险**:中
+- **结论(2024-08-05)**:**不恢复**。`TravelTarget` 类型与 `sTravelMgr`/`"travel target"` value 已从模块整体删除(仅剩注释引用),恢复需重建整个旅行目标系统,成本过高。当前 `idleBot` 恒 true 的行为可接受(随机化/传送仅针对非战斗、非组队、非副本的 bot)。
 - **验证**:做任务中的 bot 不被传送打断
 
 ### 3.12 R12 — 防拥挤传送(P1)
