@@ -624,22 +624,47 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
         return true;
     }
 
-    //bool isLFG = false;
-    //if (group)
-    //{
-    //    if (sLFGMgr->GetState(group->GetGUID()) != lfg::LFG_STATE_NONE)
-    //    {
-    //        isLFG = true;
-    //    }
-    //}
-    //if (sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE)
-    //{
-    //    isLFG = true;
-    //}
-    //if (isLFG)
-    //{
-    //    return true;
-    //}
+    // In LFG queue (dungeon finder / raid finder). Keep active so the bot
+    // doesn't get randomized/teleported away while waiting to enter.
+    bool isLFG = false;
+    if (group)
+    {
+        for (GroupReference* gref = group->GetFirstMember(); gref && !isLFG; gref = gref->next())
+        {
+            Player* member = gref->GetSource();
+            if (!member || !member->IsInWorld())
+                continue;
+            if (lfg::PlayerQueueDataMap const* queues = sLFGMgr->GetPlayerQueues(member->GetGUID()))
+            {
+                for (lfg::PlayerQueueDataMap::const_iterator itr = queues->begin(); itr != queues->end(); ++itr)
+                {
+                    if (itr->second.State != lfg::LFG_STATE_NONE)
+                    {
+                        isLFG = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        if (lfg::PlayerQueueDataMap const* queues = sLFGMgr->GetPlayerQueues(bot->GetGUID()))
+        {
+            for (lfg::PlayerQueueDataMap::const_iterator itr = queues->begin(); itr != queues->end(); ++itr)
+            {
+                if (itr->second.State != lfg::LFG_STATE_NONE)
+                {
+                    isLFG = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (isLFG)
+    {
+        return true;
+    }
 
     //// HasFriend
     //if (sPlayerbotAIConfig->BotActiveAloneForceWhenIsFriend)
@@ -1300,8 +1325,8 @@ bool PlayerbotAI::CanMove()
         //return false;
 
     if (bot->isFrozen() || bot->IsPolymorphed() || (bot->isDead() && !bot->HasFlag(PLAYER_FIELD_PLAYER_FLAGS, PLAYER_FLAGS_GHOST)) ||
-        bot->IsBeingTeleported() /* || bot->HasRootAura() || bot->HasSpiritOfRedemptionAura() || bot->HasConfuseAura()*/ ||
-        bot->IsCharmed() /* || bot->HasStunAura()*/ || bot->IsInFlight() || bot->HasUnitState(UNIT_STATE_LOST_CONTROL))
+        bot->IsBeingTeleported() || bot->HasUnitState(UNIT_STATE_ROOT) || bot->HasUnitState(UNIT_STATE_CONFUSED) ||
+        bot->IsCharmed() || bot->HasUnitState(UNIT_STATE_STUNNED) || bot->IsInFlight() || bot->HasUnitState(UNIT_STATE_LOST_CONTROL))
         return false;
 
     return bot->GetMotionMaster()->GetCurrentMovementGeneratorType() != FLIGHT_MOTION_TYPE;
@@ -2423,24 +2448,32 @@ bool PlayerbotAI::CastSpell(uint32 spellId, Unit* target, Item* itemTarget)
 
     if (spellInfo->Effects[0].Effect == SPELL_EFFECT_OPEN_LOCK || spellInfo->Effects[0].Effect == SPELL_EFFECT_SKINNING)
     {
-        /*LootObject loot = *aiObjectContext->GetValue<LootObject>("loot target");
-        GameObject* go = GetGameObject(loot.guid);
-        if (go && go->isSpawned())
+        // Interact with the current loot target so lockpicking/skinning actually
+        // registers with the object. Uses GameObject::Use instead of the old
+        // CMSG_GAMEOBJ_USE packet, which no longer matches the 5.4.8
+        // compressed-guid opcode format.
+        if (uint64 lootGuid = bot->GetLootGUID())
         {
-            WorldPacket packetgouse(CMSG_GAMEOBJ_USE, 8);
-            packetgouse << loot.guid;
-            bot->GetSession()->HandleGameObjectUseOpcode(packetgouse);
-            targets.SetGOTarget(go);
-            faceTo = go;
-        }
-        else
-        {
-            if (Unit* creature = GetUnit(loot.guid))
+            if (GameObject* go = ObjectAccessor::GetGameObject(*bot, ObjectGuid(lootGuid)))
+            {
+                if (go->isSpawned())
+                {
+                    go->Use(bot);
+                    targets.SetGOTarget(go);
+                    faceTo = go;
+                }
+            }
+            else if (Unit* creature = ObjectAccessor::GetUnit(*bot, ObjectGuid(lootGuid)))
             {
                 targets.SetUnitTarget(creature);
                 faceTo = creature;
             }
-        }*/
+        }
+        else if (Unit* creature = GetUnit(target ? target->GetGUID() : ObjectGuid()))
+        {
+            targets.SetUnitTarget(creature);
+            faceTo = creature;
+        }
     }
 
     if (bot->isMoving() && spell->GetCastTime())

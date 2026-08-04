@@ -303,6 +303,10 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
                 TC_LOG_INFO("playerbots", "Bot #%u: log out", bot);
 
             SetEventValue(bot, "add", 0, 0);
+            // Rotation cooldown: keep this bot out of the pool for a random
+            // duration so freshly logged-out bots don't immediately get picked
+            // again by AddRandomBots (which skips bots with a "logout" event).
+            SetEventValue(bot, "logout", 1, urand(sPlayerbotAIConfig->minRandomBotInWorldTime, sPlayerbotAIConfig->maxRandomBotInWorldTime));
             _currentBots.erase(std::remove(_currentBots.begin(), _currentBots.end(), bot), _currentBots.end());
 
             if (player)
