@@ -153,6 +153,23 @@ AiPlayerbot.SummonWhenGroup = 1
 # Selfbot permission level (0 = disabled, 1 = gm only (default), 2 = all players, 3 = activate on login)
 AiPlayerbot.SelfBotLevel = 1
 
+# Random bot auto-teleports to a zone matching its level on levelup
+# Default: 1 (enabled)
+AiPlayerbot.AutoTeleportForLevel = 1
+
+# Random bot stays active (not randomized/teleported away) while in a guild
+# that has at least one online real player
+# Default: 0 (disabled)
+AiPlayerbot.BotActiveAloneForceWhenInGuild = 0
+
+# Random bot stays active while a player is within this radius (yards)
+# Default: 0 (disabled)
+AiPlayerbot.BotActiveAloneForceWhenInRadius = 0
+
+# Random bot stays active while one of its friends is online
+# Default: 0 (disabled)
+AiPlayerbot.BotActiveAloneForceWhenIsFriend = 0
+
 # Give free food to bots
 # Default: 1 (enabled)
 AiPlayerbot.FreeFood = 1

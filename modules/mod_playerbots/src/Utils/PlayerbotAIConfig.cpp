@@ -160,6 +160,11 @@ bool PlayerbotAIConfig::Initialize()
     maxRandomBotTeleportInterval = sConfigMgr->GetIntDefault("AiPlayerbot.MaxRandomBotTeleportInterval", 5 * HOUR);
 
     randomBotLoginAtStartup = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotLoginAtStartup", true);
+    autoTeleportForLevel = sConfigMgr->GetBoolDefault("AiPlayerbot.AutoTeleportForLevel", true);
+    botAutologin = sConfigMgr->GetBoolDefault("AiPlayerbot.BotAutologin", false);
+    botActiveAloneForceWhenInGuild = sConfigMgr->GetBoolDefault("AiPlayerbot.BotActiveAloneForceWhenInGuild", false);
+    botActiveAloneForceWhenInRadius = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAloneForceWhenInRadius", 0);
+    botActiveAloneForceWhenIsFriend = sConfigMgr->GetBoolDefault("AiPlayerbot.BotActiveAloneForceWhenIsFriend", false);
     randomBotInvitePlayer = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotInvitePlayer", false);
     randomBotGuildNearby = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotGuildNearby", false);
     inviteChat = sConfigMgr->GetBoolDefault("AiPlayerbot.InviteChat", false);

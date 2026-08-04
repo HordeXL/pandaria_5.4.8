@@ -559,19 +559,20 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
     }
 
     // when in real guild
-    /*if (sPlayerbotAIConfig->BotActiveAloneForceWhenInGuild)
+    if (sPlayerbotAIConfig->botActiveAloneForceWhenInGuild)
     {
         if (IsInRealGuild())
         {
             return true;
         }
-    }*/
+    }
 
     // Player is near. Always active.
-    /*if (HasPlayerNearby(sPlayerbotAIConfig->BotActiveAloneForceWhenInRadius))
+    if (sPlayerbotAIConfig->botActiveAloneForceWhenInRadius &&
+        HasPlayerNearby(sPlayerbotAIConfig->botActiveAloneForceWhenInRadius))
     {
         return true;
-    }*/
+    }
 
     // Has player master. Always active.
     if (GetMaster())
@@ -666,31 +667,31 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
         return true;
     }
 
-    //// HasFriend
-    //if (sPlayerbotAIConfig->BotActiveAloneForceWhenIsFriend)
-    //{
-    //    for (auto& player : sRandomPlayerbotMgr->GetPlayers())
-    //    {
-    //        if (!player || !player->IsInWorld() || !player->GetSocial() || !bot->GetGUID())
-    //        {
-    //            continue;
-    //        }
+    // HasFriend
+    if (sPlayerbotAIConfig->botActiveAloneForceWhenIsFriend)
+    {
+        for (auto& player : sRandomPlayerbotMgr->GetPlayers())
+        {
+            if (!player || !player->IsInWorld() || !player->GetSocial() || !bot->GetGUID())
+            {
+                continue;
+            }
 
-    //        if (player->GetSocial()->HasFriend(bot->GetGUID()))
-    //        {
-    //            return true;
-    //        }
-    //    }
-    //}
+            if (player->GetSocial()->HasFriend(bot->GetGUID()))
+            {
+                return true;
+            }
+        }
+    }
 
-    //// Force the bots to spread
-    //if (activityType == OUT_OF_PARTY_ACTIVITY || activityType == GRIND_ACTIVITY)
-    //{
-    //    if (HasManyPlayersNearby(10, 40))
-    //    {
-    //        return true;
-    //    }
-    //}
+    // Force the bots to spread
+    if (activityType == OUT_OF_PARTY_ACTIVITY || activityType == GRIND_ACTIVITY)
+    {
+        if (HasManyPlayersNearby(10, 40))
+        {
+            return true;
+        }
+    }
 
     // Bots don't need to move using PathGenerator.
     if (activityType == DETAILED_MOVE_ACTIVITY)
@@ -1242,6 +1243,27 @@ bool PlayerbotAI::HasManyPlayersNearby(uint32 trigerrValue, float range)
             if (found >= trigerrValue)
                 return true;
         }
+    }
+
+    return false;
+}
+
+bool PlayerbotAI::IsInRealGuild()
+{
+    if (!bot->GetGuildId())
+        return false;
+
+    // The bot is considered in a "real guild" when at least one online player
+    // (not a bot) shares its guild. Offline members don't count: activity is
+    // only meaningful when a real player could actually be watching.
+    for (auto const& itr : ObjectAccessor::GetPlayers())
+    {
+        Player* player = itr.second;
+        if (!player || !player->IsInWorld() || player == bot)
+            continue;
+
+        if (player->GetGuildId() == bot->GetGuildId() && !GET_PLAYERBOT_AI(player))
+            return true;
     }
 
     return false;

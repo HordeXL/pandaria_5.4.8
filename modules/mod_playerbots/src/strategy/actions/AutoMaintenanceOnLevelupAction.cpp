@@ -17,7 +17,7 @@ bool AutoMaintenanceOnLevelupAction::Execute(Event event)
 
 void AutoMaintenanceOnLevelupAction::AutoTeleportForLevel()
 {
-    /*if (!sPlayerbotAIConfig->autoTeleportForLevel || !sRandomPlayerbotMgr->IsRandomBot(bot))
+    if (!sPlayerbotAIConfig->autoTeleportForLevel || !sRandomPlayerbotMgr->IsRandomBot(bot))
     {
         return;
     }
@@ -25,7 +25,7 @@ void AutoMaintenanceOnLevelupAction::AutoTeleportForLevel()
     {
         return;
     }
-    sRandomPlayerbotMgr->RandomTeleportForLevel(bot);*/
+    sRandomPlayerbotMgr->RandomTeleportForLevel(bot);
 }
 
 void AutoMaintenanceOnLevelupAction::AutoPickTalents()

@@ -1004,6 +1004,8 @@ void RandomPlayerbotMgr::OnPlayerLogin(Player* player)
 
         // if (playerCell == botCell)
         // botsNearby++;
+        if (playerCell == botCell)
+            botsNearby++;
 
         Group* group = bot->GetGroup();
         if (!group)
@@ -1027,7 +1029,7 @@ void RandomPlayerbotMgr::OnPlayerLogin(Player* player)
         }
     }
 
-    if (botsNearby > 100 && false)
+    if (botsNearby > 100)
     {
         WorldPosition botPos(player);
 

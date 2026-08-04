@@ -1272,18 +1272,12 @@ void PlayerbotMgr::OnBotLoginInternal(Player* const bot)
 
 void PlayerbotMgr::OnPlayerLogin(Player* player)
 {
-    /*
-    // set locale priority for bot texts
-    sPlayerbotTextMgr->AddLocalePriority(player->GetSession()->GetSessionDbcLocale());
-
-    if (sPlayerbotAIConfig->selfBotLevel > 2)
-        HandlePlayerbotCommand("self", player);
-
-    if (!sPlayerbotAIConfig->botAutologin)
+    if (!sPlayerbotAIConfig->botAutologin || !player)
         return;
 
+    // Auto-login all of the player's alts as bots (AiPlayerbot.BotAutologin).
     uint32 accountId = player->GetSession()->GetAccountId();
-    QueryResult results = CharacterDatabase.Query("SELECT name FROM characters WHERE account = {}", accountId);
+    QueryResult results = CharacterDatabase.PQuery("SELECT name FROM characters WHERE account = %u", accountId);
     if (results)
     {
         std::ostringstream out;
@@ -1298,11 +1292,11 @@ void PlayerbotMgr::OnPlayerLogin(Player* player)
             else
                 out << ",";
 
-            out << fields[0].Get<std::string>();
+            out << fields[0].GetString();
         } while (results->NextRow());
 
         HandlePlayerbotCommand(out.str().c_str(), player);
-    }*/
+    }
 }
 
 void PlayerbotMgr::TellError(std::string const botName, std::string const text)
