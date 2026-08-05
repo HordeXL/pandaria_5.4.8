@@ -115,6 +115,7 @@ Eluna.ScriptPath = "lua_scripts"
 LoginDatabaseInfo     = "127.0.0.1;3306;root;root;auth"
 WorldDatabaseInfo     = "127.0.0.1;3306;root;root;world"
 CharacterDatabaseInfo = "127.0.0.1;3306;root;root;characters"
+PlayerbotsDatabaseInfo = "127.0.0.1;3306;root;root;mop_playerbots"
 
 #
 #    LoginDatabase.WorkerThreads
