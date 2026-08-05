@@ -73,6 +73,27 @@ public:
                 sWorld->StopNow(1);
                 return;
             }
+
+            // PlayerbotsDatabase is declared in the core (Master.cpp) but its
+            // Open() call there runs before playerbots.conf is loaded, so the
+            // pool is never actually created. Open it here, after LoadMore,
+            // before any code (PlayerbotAIConfig::Initialize ->
+            // PrepareTeleportCache) issues queries against it. Without this the
+            // empty pool makes GetFreeConnection spin forever (CPU-busy hang).
+            if (!PlayerbotsDatabase.IsOpen())
+            {
+                std::string dbString = sConfigMgr->GetStringDefault("PlayerbotsDatabaseInfo", "");
+                if (!dbString.empty())
+                {
+                    uint8 asyncThreads = uint8(sConfigMgr->GetIntDefault("PlayerbotsDatabase.WorkerThreads", 1));
+                    uint8 synchThreads = uint8(sConfigMgr->GetIntDefault("PlayerbotsDatabase.SynchThreads", 1));
+                    if (!PlayerbotsDatabase.Open(dbString, asyncThreads, synchThreads))
+                        TC_LOG_ERROR("playerbots", "Cannot connect to playerbots database %s", dbString.c_str());
+                }
+                else
+                    TC_LOG_ERROR("playerbots", "PlayerbotsDatabaseInfo is not set in playerbots.conf");
+            }
+
             sPlayerbotAIConfig->Initialize();
             sPlayerbotTextMgr->Initialize();
 

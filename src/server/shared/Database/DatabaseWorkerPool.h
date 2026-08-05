@@ -573,6 +573,13 @@ class DatabaseWorkerPool
             return worker;
         }
 
+    public:
+        //! True once Open() has created the connection pool (sync or async).
+        bool IsOpen() const
+        {
+            return !_connections.empty() || !_workers.empty();
+        }
+
         char const* GetDatabaseName() const
         {
             return _connectionInfo.database.c_str();
