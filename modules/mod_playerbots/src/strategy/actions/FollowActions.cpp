@@ -46,6 +46,11 @@ bool FollowAction::Execute(Event event)
 
 bool FollowAction::isUseful()
 {
+    // Never follow outside a group/raid: bots that left, were kicked or whose
+    // group disbanded must stop following and resume their own behaviour.
+    if (!bot->GetGroup())
+        return false;
+
     // move from group takes priority over follow as it's added and removed automatically
     // (without removing/adding follow)
     if (botAI->HasStrategy("move from group", BOT_STATE_COMBAT) ||
@@ -139,6 +144,10 @@ bool FleeToMasterAction::Execute(Event event)
 
 bool FleeToMasterAction::isUseful()
 {
+    // Never flee to a (former) master outside a group/raid.
+    if (!bot->GetGroup())
+        return false;
+
     if (!botAI->GetGroupMaster())
         return false;
 

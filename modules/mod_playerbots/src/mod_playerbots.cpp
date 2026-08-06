@@ -9,7 +9,9 @@
 #include "ChannelMgr.h"
 #include "Config.h"
 #include "cs_playerbots.h"
+#include "Group.h"
 #include "Log.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "World.h"
@@ -184,12 +186,54 @@ public:
             botAI->OnInviteDeclined(decliner);
     }
 };
+class PlayerbotsGroupScript : public GroupScript
+{
+public:
+    PlayerbotsGroupScript() : GroupScript("PlayerbotsGroupScript") {}
+
+    // Bot joined a group/raid -> enable following the leader.
+    void OnAddMember(Group* group, uint64 guid) override
+    {
+        if (Player* bot = ObjectAccessor::FindPlayer(ObjectGuid(guid)))
+            if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot))
+                botAI->ChangeStrategy("+follow", BOT_STATE_NON_COMBAT);
+    }
+
+    // Bot left / was kicked -> stop following immediately.
+    void OnRemoveMember(Group* group, uint64 guid, RemoveMethod method, uint64 kicker, const char* reason) override
+    {
+        if (Player* bot = ObjectAccessor::FindPlayer(ObjectGuid(guid)))
+            HandleBotLeftGroup(bot);
+    }
+
+    // Group/raid disbanded -> every bot member stops following.
+    void OnDisband(Group* group) override
+    {
+        for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+            if (Player* bot = ref->GetSource())
+                HandleBotLeftGroup(bot);
+    }
+
+private:
+    static void HandleBotLeftGroup(Player* bot)
+    {
+        PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+        if (!botAI)
+            return;
+
+        // Stop following the (former) leader; the FollowAction::isUseful()
+        // group check keeps this enforced even if the strategy lingers.
+        botAI->ChangeStrategy("-follow", BOT_STATE_NON_COMBAT);
+    }
+};
+
 void AddSC_mod_playerbots()
 {
     new mod_playerbots();
 
     new PlayerbotsWorldScript();
     new PlayerbotsPlayerScript();
+    new PlayerbotsGroupScript();
 
     AddSC_playerbots_commandscript();
 }
