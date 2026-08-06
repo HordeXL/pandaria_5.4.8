@@ -1092,6 +1092,14 @@ void Pet::_SaveSpells(SQLTransaction& trans)
                 trans->Append(stmt);
                 break;
             case PETSPELL_NEW:
+                // Prevent duplicate-key errors against orphaned pet_spell rows
+                // left behind by interrupted save/delete sequences (e.g. bot
+                // pets randomized concurrently). Delete first, then insert.
+                stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_PET_SPELL_BY_SPELL);
+                stmt->setUInt32(0, m_charmInfo->GetPetNumber());
+                stmt->setUInt32(1, itr->first);
+                trans->Append(stmt);
+
                 stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_PET_SPELL);
                 stmt->setUInt32(0, m_charmInfo->GetPetNumber());
                 stmt->setUInt32(1, itr->first);
