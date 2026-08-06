@@ -522,12 +522,12 @@ bool RandomPlayerbotMgr::ProcessBot(Player* player)
     return false;
 }
 
-void RandomPlayerbotMgr::TagForRandomize(Player* bot, uint32 level)
+void RandomPlayerbotMgr::TagForRandomize(Player* bot, uint32 level, uint32 delay)
 {
     uint32 guid = GUID_LOPART(bot->GetGUID());
 
     SetValue(bot, "level", level);
-    ScheduleRandomize(guid, 0);
+    ScheduleRandomize(guid, delay);
 }
 
 void RandomPlayerbotMgr::Revive(Player* player)

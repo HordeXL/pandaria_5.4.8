@@ -85,7 +85,7 @@ void RandomBotBacketManager::AdjustBotToRange(Player* bot, int targetRangeIndex,
         newLevel = GetRandomLevelInRange(factionRanges[targetRangeIndex]);
     }
 
-    sRandomPlayerbotMgr->TagForRandomize(bot, newLevel);
+    sRandomPlayerbotMgr->TagForRandomize(bot, newLevel, urand(15, 55));
 
     if (_BotDistDebugMode)
     {
@@ -100,6 +100,10 @@ void RandomBotBacketManager::Update(uint32 diff)
     if (_timer < (_BotDistCheckFrequency * 1000))
         return;
     _timer = 0;
+
+    // Total number of bots adjusted in this check; capped by _MaxAdjustPerCheck
+    // so the world thread is not blocked by a batch of full re-randomizations.
+    uint32 totalAdjusted = 0;
 
     // Containers for Alliance bots.
     uint32 totalAllianceBots = 0;
@@ -206,6 +210,8 @@ void RandomBotBacketManager::Update(uint32 diff)
                 AdjustBotToRange(bot, targetRange, _AllianceLevelRanges);
                 allianceActualCounts[i]--;
                 allianceActualCounts[targetRange]++;
+                if (++totalAdjusted >= _MaxAdjustPerCheck)
+                    return;
             }
         }
     }
@@ -258,6 +264,8 @@ void RandomBotBacketManager::Update(uint32 diff)
                 AdjustBotToRange(bot, targetRange, _HordeLevelRanges);
                 hordeActualCounts[i]--;
                 hordeActualCounts[targetRange]++;
+                if (++totalAdjusted >= _MaxAdjustPerCheck)
+                    return;
             }
         }
     }

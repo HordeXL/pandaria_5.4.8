@@ -139,6 +139,15 @@ void BotFactory::Randomize(bool incremental)
     TC_LOG_INFO("playerbots", "%s randomizing %s (level %u class = %s)...", (incremental ? "Incremental" : "Full"),
             bot->GetName().c_str(), level, ClassToString((Classes)bot->GetClass()).c_str());
 
+    // Apply the target level, otherwise the level-bracket adjuster never
+    // converges and re-randomizes the same bots every 60s check (blocking the
+    // world thread and stalling clients).
+    if (bot->GetLevel() != level)
+    {
+        bot->SetLevel(level);
+        bot->InitStatsForLevel();
+    }
+
     Prepare();
     if (!incremental)
     {

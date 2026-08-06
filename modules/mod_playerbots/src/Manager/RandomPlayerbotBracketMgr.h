@@ -34,6 +34,10 @@ private:
     LevelRangeConfig _AllianceLevelRanges[NUM_RANGES];
     LevelRangeConfig _HordeLevelRanges[NUM_RANGES];
     static const uint32 _BotDistCheckFrequency = 60; // in seconds
+    // Limit the number of bots re-randomized per check. A full re-randomize
+    // (talents reset, pet rebuild, equipment) runs on the world thread and can
+    // stall the client; keep it to one bot per 60s check and spread the work.
+    static const uint32 _MaxAdjustPerCheck = 1;
 };
 
 #define sBracketMgr RandomBotBacketManager::instance()
