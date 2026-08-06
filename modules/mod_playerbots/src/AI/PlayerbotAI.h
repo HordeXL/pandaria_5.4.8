@@ -136,6 +136,7 @@ public:
     void ResetStrategies();
     void ChangeStrategy(std::string const name, BotState type);
     void ApplyInstanceStrategies(uint32 mapId, bool remove = false);
+    void SyncLevelWithGroup();
     void ClearStrategies(BotState type);
     std::vector<std::string> GetStrategies(BotState type);
 
@@ -268,6 +269,7 @@ protected:
     uint32 _lastItemCount = 0;
     uint32 _lootChatDelay = 0;
     uint32 _nextChannelChatTime = 0;
+    time_t _lastGroupLevelSync = 0;
     std::map<uint32, uint8> _inviteDeclineCounts;      // player low GUID -> decline count
     std::map<uint32, uint32> _inviteBlockedUntil;      // player low GUID -> unblock time (ms)
     std::mutex _inviteMutex;

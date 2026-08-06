@@ -369,6 +369,9 @@ void PlayerbotAI::UpdateAIInternal([[maybe_unused]] uint32 elapsed, bool minimal
     masterIncomingPacketHandlers.Handle(helper);
     masterOutgoingPacketHandlers.Handle(helper);
 
+    // Keep the bot's level aligned with a real-player group member (throttled).
+    SyncLevelWithGroup();
+
     // Proactive channel chatter: random bots (level >= 10) occasionally say
     // something in a channel they joined (prefers World). Global throttle is
     // shared with channel replies to avoid spam.
@@ -1136,6 +1139,55 @@ void PlayerbotAI::HandleTeleportAck()
         Reset(true);
     }
     SetNextCheckDelay(sPlayerbotAIConfig->globalCoolDown);
+}
+
+void PlayerbotAI::SyncLevelWithGroup()
+{
+    // Keep the bot's level aligned with a real player in the same group so
+    // party play stays fair. Runs at most once per 10s and is skipped while
+    // the bot is in combat, dead or inside a battleground.
+    if (time(nullptr) - _lastGroupLevelSync <= 10 || bot->IsInCombat() || !bot->IsAlive() || bot->InBattleground())
+        return;
+
+    _lastGroupLevelSync = time(nullptr);
+
+    Group* group = bot->GetGroup();
+    if (!group)
+        return;
+
+    Player* syncTarget = nullptr;
+
+    Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID());
+    if (leader && leader != bot)
+    {
+        PlayerbotAI* leaderAI = GET_PLAYERBOT_AI(leader);
+        if (!leaderAI || leaderAI->IsRealPlayer())
+            syncTarget = leader;
+    }
+
+    if (!syncTarget)
+    {
+        for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+        {
+            Player* member = ref->GetSource();
+            if (!member || member == bot)
+                continue;
+
+            PlayerbotAI* memberAI = GET_PLAYERBOT_AI(member);
+            if (!memberAI || memberAI->IsRealPlayer())
+            {
+                syncTarget = member;
+                break;
+            }
+        }
+    }
+
+    if (syncTarget && bot->GetLevel() != syncTarget->GetLevel())
+    {
+        bot->GiveLevel(syncTarget->GetLevel());
+        bot->SetHealth(bot->GetMaxHealth());
+        bot->SetPower(POWER_MANA, bot->GetMaxPower(POWER_MANA));
+    }
 }
 
 void PlayerbotAI::HandleBotOutgoingPacket(WorldPacket const& packet)
