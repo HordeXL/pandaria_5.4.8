@@ -546,6 +546,14 @@ void RandomPlayerbotMgr::Clear(Player* bot)
     //factory.ClearEverything();
 }
 
+void RandomPlayerbotMgr::TeleportBotToLevelArea(Player* bot)
+{
+    if (!bot || !bot->IsInWorld() || bot->IsBeingTeleported() || bot->IsInCombat() || !bot->IsAlive())
+        return;
+
+    RandomTeleportForLevel(bot);
+}
+
 void RandomPlayerbotMgr::RandomizeFirst(Player* bot)
 {
     uint32 maxLevel = sPlayerbotAIConfig->randomBotMaxLevel;

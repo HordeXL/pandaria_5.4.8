@@ -224,6 +224,15 @@ private:
         // Stop following the (former) leader; the FollowAction::isUseful()
         // group check keeps this enforced even if the strategy lingers.
         botAI->ChangeStrategy("-follow", BOT_STATE_NON_COMBAT);
+
+        // Random bots: resume independent world behaviour right away instead of
+        // standing still. Rebuild the default strategy set (drops any leftover
+        // group-mode strategies) and teleport back to a level-appropriate area.
+        if (sRandomPlayerbotMgr->IsRandomBot(bot))
+        {
+            botAI->ResetStrategies();
+            sRandomPlayerbotMgr->TeleportBotToLevelArea(bot);
+        }
     }
 };
 

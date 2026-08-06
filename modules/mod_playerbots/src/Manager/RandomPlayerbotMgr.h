@@ -105,6 +105,10 @@ public:
     void Randomize(Player* bot);
     
     void Clear(Player* bot);
+    // Move a random bot back to its level-appropriate world area (city / farm
+    // spot) so it resumes independent world behaviour, e.g. after leaving a
+    // player's group.
+    void TeleportBotToLevelArea(Player* bot);
     
     void OnPlayerLogout(Player* player);
     void OnPlayerLogin(Player* player);
