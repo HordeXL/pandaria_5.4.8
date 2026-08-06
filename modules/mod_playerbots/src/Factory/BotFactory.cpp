@@ -378,6 +378,10 @@ void BotFactory::InitTalentsTree(bool reset)
 
     if (!availablepoints || spec_tab == 99) return;
 
+    // Defensive bounds check: GetSpectab may return up to MAX_SPECIALIZATIONS-1
+    // (druid restoration is 3), and GetClass() must be a valid class index.
+    if (bot->GetClass() >= MAX_CLASSES || spec_tab >= MAX_SPECIALIZATIONS) return;
+
     const std::vector<uint16>& talents = sPlayerbotAIConfig->premadeSpecLink[bot->GetClass()][spec_tab];
     if (talents.empty()) return;
 
