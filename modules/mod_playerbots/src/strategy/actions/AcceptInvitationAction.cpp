@@ -36,9 +36,12 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
         if (!bot->IsBeingTeleported())
         {
             bot->TeleportTo(leader->GetMapId(), leader->GetPositionX(), leader->GetPositionY(), leader->GetPositionZ(), leader->GetOrientation());
-            botAI->SetNextCheckDelay(3000);
         }
-        return true;  // teleporting; the "group invite" trigger re-fires after arrival
+        // Keep re-checking while the teleport is in flight (cross-map teleports
+        // can take longer than one tick); once the bot arrives on the leader's
+        // map, this action accepts the invite normally on the next evaluation.
+        botAI->SetNextCheckDelay(3000);
+        return true;
     }
 
     TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s accepting invite", bot->GetName().c_str());
