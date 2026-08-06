@@ -95,6 +95,27 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
     if (!sPlayerbotAIConfig->randomBotAutologin || !sPlayerbotAIConfig->enabled)
         return;
 
+    // Periodically track the average level of online non-bot players so random
+    // bots can be spawned at a level that matches the active player base.
+    if (time(nullptr) - _playersCheckTimer > 5 * MINUTE)
+    {
+        _playersCheckTimer = time(nullptr);
+        uint32 totalLevel = 0;
+        uint32 count = 0;
+        for (auto const& p : ObjectAccessor::GetPlayers())
+        {
+            Player* player = p.second;
+            if (!player || !player->IsInWorld() || !player->GetSession())
+                continue;
+            if (sRandomPlayerbotMgr->IsRandomBot(player))
+                continue;
+            totalLevel += player->GetLevel();
+            ++count;
+        }
+        if (count)
+            _playersLevel = totalLevel / count;
+    }
+
     uint32 maxAllowedBotCount = GetEventValue(0, "bot_count");
     if (!maxAllowedBotCount || (maxAllowedBotCount < sPlayerbotAIConfig->minRandomBots ||
         maxAllowedBotCount > sPlayerbotAIConfig->maxRandomBots))
@@ -531,9 +552,9 @@ void RandomPlayerbotMgr::RandomizeFirst(Player* bot)
     maxLevel = std::min(maxLevel, sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
 
     // if lvl sync is enabled, max level is limited by online players lvl
-    /*if (sPlayerbotAIConfig->syncLevelWithPlayers)
+    if (sPlayerbotAIConfig->syncLevelWithPlayers)
         maxLevel = std::max(sPlayerbotAIConfig->randomBotMinLevel,
-            std::min(playersLevel, sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL)));*/
+            std::min(_playersLevel, sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL)));
 
     //PerformanceMonitorOperation* pmo = sPerformanceMonitor->start(PERF_MON_RNDBOT, "RandomizeFirst");
 

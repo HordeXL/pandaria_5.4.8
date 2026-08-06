@@ -120,6 +120,7 @@ public:
     void UpdateAIInternal(uint32 elapsed, bool minimal = false) override;
     bool AllowActivity(ActivityType activityType = ALL_ACTIVITY, bool checkNow = false);
     bool AllowActive(ActivityType activityType);
+    uint32 AutoScaleActivity(uint32 value);
     void DoNextAction(bool min);
 
     void HandleBotOutgoingPacket(WorldPacket const& packet);
@@ -134,6 +135,7 @@ public:
 
     void ResetStrategies();
     void ChangeStrategy(std::string const name, BotState type);
+    void ApplyInstanceStrategies(uint32 mapId, bool remove = false);
     void ClearStrategies(BotState type);
     std::vector<std::string> GetStrategies(BotState type);
 

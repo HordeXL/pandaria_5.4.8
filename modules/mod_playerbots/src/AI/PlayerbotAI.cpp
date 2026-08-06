@@ -34,6 +34,7 @@
 #include "LastSpellCastValue.h"
 #include "LFGMgr.h"
 #include "MapManager.h"
+#include "DBCStore.h"
 #include "MotionMaster.h"
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
@@ -442,7 +443,6 @@ bool PlayerbotAI::DoSpecificAction(std::string const name, Event event, bool sil
 
 bool PlayerbotAI::AllowActive(ActivityType activityType)
 {
-    return true;
     auto HasRealPlayers = ([](Map* map)
     {
         Map::PlayerList const& players = map->GetPlayers();
@@ -501,9 +501,9 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
     });
 
     // when botActiveAlone is 100% and smartScale disabled
-    //if (sPlayerbotAIConfig->botActiveAlone >= 100 && !sPlayerbotAIConfig->botActiveAloneSmartScale)
+    if (sPlayerbotAIConfig->botActiveAlone >= 100 && !sPlayerbotAIConfig->botActiveAloneSmartScale)
     {
-        //return true;
+        return true;
     }
 
     // Is in combat. Always defend yourself.
@@ -699,10 +699,10 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
         return false;
     }
 
-    /*if (sPlayerbotAIConfig->botActiveAlone <= 0)
+    if (sPlayerbotAIConfig->botActiveAlone <= 0)
     {
         return false;
-    }*/
+    }
 
     // #######################################################################################
     // All mandatory conditations are checked to be active or not, from here the remaining
@@ -711,7 +711,7 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
 
     // Below is code to have a specified % of bots active at all times.
     // The default is 10%. With 0.1% of all bots going active or inactive each minute.
-    /*uint32 mod = sPlayerbotAIConfig->botActiveAlone > 100 ? 100 : sPlayerbotAIConfig->botActiveAlone;
+    uint32 mod = sPlayerbotAIConfig->botActiveAlone > 100 ? 100 : sPlayerbotAIConfig->botActiveAlone;
     if (sPlayerbotAIConfig->botActiveAloneSmartScale &&
         bot->GetLevel() >= sPlayerbotAIConfig->botActiveAloneSmartScaleWhenMinLevel &&
         bot->GetLevel() <= sPlayerbotAIConfig->botActiveAloneSmartScaleWhenMaxLevel)
@@ -719,16 +719,22 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
         mod = AutoScaleActivity(mod);
     }
 
-    uint32 ActivityNumber =
-        GetFixedBotNumer(BotTypeNumber::ACTIVITY_TYPE_NUMBER, 100,
-            sPlayerbotAIConfig->botActiveAlone * static_cast<float>(mod) / 100 * 0.01f);
+    uint32 chance = (sPlayerbotAIConfig->botActiveAlone * mod) / 100;
+    return urand(1, 100) <= chance;
+}
 
-    return ActivityNumber <=
-        (sPlayerbotAIConfig->botActiveAlone * mod) /
-        100;  // The given percentage of bots should be active and rotate 1% of those active bots each minute.
-    */
+uint32 PlayerbotAI::AutoScaleActivity(uint32 value)
+{
+    if (!bot)
+        return value;
 
-    return false;
+    // Scale activity by the bot's level relative to the configured max random
+    // bot level: higher-level bots stay active more often.
+    uint32 maxLevel = sPlayerbotAIConfig->randomBotMaxLevel;
+    if (!maxLevel)
+        return value;
+
+    return value * bot->GetLevel() / maxLevel;
 }
 
 bool PlayerbotAI::AllowActivity(ActivityType activityType, bool checkNow)
@@ -804,6 +810,19 @@ void PlayerbotAI::Reset(bool full)
     }
 }
 
+void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool remove)
+{
+    MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
+    if (!mapEntry || !mapEntry->IsDungeon())
+        return;
+
+    // Generic dungeon/raid group-combat strategies. The full per-instance
+    // strategy table from upstream is not available in this branch, so keep a
+    // safe subset of strategies that exist in the current strategy registry.
+    std::string const strategies = "dps aoe,tank assist";
+    ChangeStrategy(remove ? "-" + strategies : "+" + strategies, BOT_STATE_NON_COMBAT);
+}
+
 void PlayerbotAI::ResetStrategies()
 {
     for (uint8 i = 0; i < BOT_STATE_MAX; i++)
@@ -812,8 +831,8 @@ void PlayerbotAI::ResetStrategies()
     AiFactory::AddDefaultCombatStrategies(bot, this, _engines[BOT_STATE_COMBAT]);
     AiFactory::AddDefaultNonCombatStrategies(bot, this, _engines[BOT_STATE_NON_COMBAT]);
     AiFactory::AddDefaultDeadStrategies(bot, this, _engines[BOT_STATE_DEAD]);
-    //if (sPlayerbotAIConfig->applyInstanceStrategies)
-        //ApplyInstanceStrategies(bot->GetMapId());
+    if (sPlayerbotAIConfig->applyInstanceStrategies)
+        ApplyInstanceStrategies(bot->GetMapId());
 
     for (uint8 i = 0; i < BOT_STATE_MAX; i++)
         _engines[i]->Init();
@@ -1112,8 +1131,8 @@ void PlayerbotAI::HandleTeleportAck()
             bot->GetSession()->HandleMoveWorldportAckOpcode();
         }
         // SetNextCheckDelay(urand(2000, 5000));
-        //if (sPlayerbotAIConfig->applyInstanceStrategies)
-            //ApplyInstanceStrategies(bot->GetMapId(), true);
+        if (sPlayerbotAIConfig->applyInstanceStrategies)
+            ApplyInstanceStrategies(bot->GetMapId(), true);
         Reset(true);
     }
     SetNextCheckDelay(sPlayerbotAIConfig->globalCoolDown);

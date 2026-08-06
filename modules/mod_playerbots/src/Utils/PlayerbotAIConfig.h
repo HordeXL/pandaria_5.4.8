@@ -60,6 +60,8 @@ public:
 
     uint32 openGoSpell;
     bool randomBotAutologin, disableRandomLevels;
+    bool syncLevelWithPlayers = false;
+    bool applyInstanceStrategies = true;
     uint32 randomBotMaxLevel, randomBotMinLevel;
     float randomBotMaxLevelChance;
     uint32 minRandomBots, maxRandomBots, maxAddedBotsPerClass, maxAddedBots;
@@ -75,6 +77,8 @@ public:
     bool botActiveAloneForceWhenInGuild;
     uint32 botActiveAloneForceWhenInRadius;
     bool botActiveAloneForceWhenIsFriend;
+    uint32 botActiveAlone, botActiveAloneSmartScaleWhenMinLevel, botActiveAloneSmartScaleWhenMaxLevel;
+    bool botActiveAloneSmartScale;
     bool randomBotInvitePlayer, randomBotGuildNearby, inviteChat;
     std::string randomBotAccountPrefix;
     uint32 randomBotAccountCount;

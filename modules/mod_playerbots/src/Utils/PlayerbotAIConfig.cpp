@@ -145,6 +145,8 @@ bool PlayerbotAIConfig::Initialize()
     disableRandomLevels = sConfigMgr->GetBoolDefault("AiPlayerbot.DisableRandomLevels", false);
     randomBotMaxLevel = sConfigMgr->GetIntDefault("AiPlayerbot.RandomBotMaxLevel", 90);
     randomBotMinLevel = sConfigMgr->GetIntDefault("AiPlayerbot.RandomBotMinLevel", 1);
+    syncLevelWithPlayers = sConfigMgr->GetBoolDefault("AiPlayerbot.SyncLevelWithPlayers", false);
+    applyInstanceStrategies = sConfigMgr->GetBoolDefault("AiPlayerbot.ApplyInstanceStrategies", true);
     randomBotMaxLevelChance = sConfigMgr->GetFloatDefault("AiPlayerbot.RandomBotMaxLevelChance", 0.25f);
     randomBotsPerInterval = sConfigMgr->GetIntDefault("AiPlayerbot.RandomBotsPerInterval", 60);
     randomBotUpdateInterval = sConfigMgr->GetIntDefault("AiPlayerbot.RandomBotUpdateInterval", 20);
@@ -163,6 +165,10 @@ bool PlayerbotAIConfig::Initialize()
     autoTeleportForLevel = sConfigMgr->GetBoolDefault("AiPlayerbot.AutoTeleportForLevel", true);
     botAutologin = sConfigMgr->GetBoolDefault("AiPlayerbot.BotAutologin", false);
     botActiveAloneForceWhenInGuild = sConfigMgr->GetBoolDefault("AiPlayerbot.BotActiveAloneForceWhenInGuild", false);
+    botActiveAlone = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAlone", 20);
+    botActiveAloneSmartScale = sConfigMgr->GetBoolDefault("AiPlayerbot.BotActiveAloneSmartScale", false);
+    botActiveAloneSmartScaleWhenMinLevel = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAloneSmartScaleWhenMinLevel", 60);
+    botActiveAloneSmartScaleWhenMaxLevel = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAloneSmartScaleWhenMaxLevel", 80);
     botActiveAloneForceWhenInRadius = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAloneForceWhenInRadius", 0);
     botActiveAloneForceWhenIsFriend = sConfigMgr->GetBoolDefault("AiPlayerbot.BotActiveAloneForceWhenIsFriend", false);
     randomBotInvitePlayer = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotInvitePlayer", false);
