@@ -971,6 +971,14 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
                 BotFactory factory(bot, bot->GetLevel());
                 factory.InitTalentsTree(true);
                 factory.InitEquipment(true);
+
+                // Randomize() calls RandomTeleportForLevel() which moves the bot to a
+                // random location; bring it back so the freshly added bot stands by
+                // its master instead of somewhere random.
+                if (master->IsInWorld() && !master->IsBeingTeleported() && !bot->IsBeingTeleported())
+                {
+                    bot->TeleportTo(master->GetMapId(), master->GetPositionX(), master->GetPositionY(), master->GetPositionZ(), master->GetOrientation());
+                }
             }).detach();
             
             messages.push_back("Add class " + std::string(charname));
