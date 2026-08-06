@@ -166,9 +166,9 @@ bool PlayerbotAIConfig::Initialize()
     botAutologin = sConfigMgr->GetBoolDefault("AiPlayerbot.BotAutologin", false);
     botActiveAloneForceWhenInGuild = sConfigMgr->GetBoolDefault("AiPlayerbot.BotActiveAloneForceWhenInGuild", false);
     botActiveAlone = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAlone", 20);
-    botActiveAloneSmartScale = sConfigMgr->GetBoolDefault("AiPlayerbot.BotActiveAloneSmartScale", false);
-    botActiveAloneSmartScaleWhenMinLevel = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAloneSmartScaleWhenMinLevel", 60);
-    botActiveAloneSmartScaleWhenMaxLevel = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAloneSmartScaleWhenMaxLevel", 80);
+    botActiveAloneSmartScale = sConfigMgr->GetBoolDefault("AiPlayerbot.botActiveAloneSmartScale", false);
+    botActiveAloneSmartScaleWhenMinLevel = sConfigMgr->GetIntDefault("AiPlayerbot.botActiveAloneSmartScaleWhenMinLevel", 60);
+    botActiveAloneSmartScaleWhenMaxLevel = sConfigMgr->GetIntDefault("AiPlayerbot.botActiveAloneSmartScaleWhenMaxLevel", 80);
     botActiveAloneForceWhenInRadius = sConfigMgr->GetIntDefault("AiPlayerbot.BotActiveAloneForceWhenInRadius", 0);
     botActiveAloneForceWhenIsFriend = sConfigMgr->GetBoolDefault("AiPlayerbot.BotActiveAloneForceWhenIsFriend", false);
     randomBotInvitePlayer = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotInvitePlayer", false);
