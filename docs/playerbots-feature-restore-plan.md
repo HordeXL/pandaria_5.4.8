@@ -23,28 +23,30 @@
 | 2024-08-05 | **P0/P1 批实施后整体撤回** | `bd73e1f`(P0:R1-R5)、`94131ef`(P1:R6-R9,R12)实施后,因启动卡死排查被 `4b1f4187` revert 撤回(见 §3.19)。**当前代码不含 R1-R18 任何恢复**,清单回到"待恢复" |
 | 2024-08-05 | **启动死循环修复**(`844ebaa9`) | 根因:`Master.cpp` 在 `playerbots.conf` 加载前读取 `PlayerbotsDatabaseInfo`(为空)→ `PlayerbotsDatabase.Open()` 从未执行 → 连接池为空 → `PrepareTeleportCache` 的 `PQuery` 触发 `GetFreeConnection()` 的 `while(true)` 忙等,单核满载死循环。修复:新增 `DatabaseWorkerPool::IsOpen()`,`mod_playerbots.cpp` `OnConfigLoad` 在 `LoadMore` 后、`Initialize()` 前补开连接池 |
 | 2024-08-05 | **角色名 / 名字池中文化** | `characters.name`:2200 英文名 → 中文(2/5 字,诗意词库);`playerbots_names`:10 万英文 → 32767 中文(`33ff8ce3`,gender 0/1 交替) |
-| 2024-08-06 | **InitTalentsTree 越界崩溃修复**(待提交) | 根因:`premadeSpecLink[MAX_CLASSES][MAX_SPECIALIZATIONS-1]` 第二维仅 3,`GetSpectab()` 对德鲁伊恢复返回 3 → `premadeSpecLink[class][3]` 越界 UB,`BotFactory.cpp:388` 读垃圾内存崩溃。修复:数组第二维扩为 `[MAX_SPECIALIZATIONS]`(与加载循环匹配)+ `BotFactory.cpp` 加 class/spec_tab 边界防御 |
+| 2024-08-06 | **InitTalentsTree 越界崩溃修复**(`c71271dd`) | 根因:`premadeSpecLink[MAX_CLASSES][MAX_SPECIALIZATIONS-1]` 第二维仅 3,`GetSpectab()` 对德鲁伊恢复返回 3 → `premadeSpecLink[class][3]` 越界 UB,`BotFactory.cpp:388` 读垃圾内存崩溃。修复:数组第二维扩为 `[MAX_SPECIALIZATIONS]`(与加载循环匹配)+ `BotFactory.cpp` 加 class/spec_tab 边界防御 |
+| 2024-08-06 | **P0 批次恢复**(`6a41c46a`) | cherry-pick `bd73e1f`,恢复 R1 登出冷却、R2 LFG 活跃、R3 开锁/剥皮、R4 被控状态、R5 灵魂碎片。RelWithDebInfo 0 error,已部署 |
+| 2024-08-06 | **P1 批次恢复**(`a6d8ecfa`) | cherry-pick `94131ef`,恢复 R6 真人公会、R7 邻近/好友活跃、R8 升级传送、R9 玩家登录 bot、R12 防拥挤。RelWithDebInfo 0 error,已部署。R10/R11 保持不恢复 |
 
 ---
 
 ## 2. 待恢复清单总览
 
-> 状态图例:⬜ 待恢复(P0/P1 曾实施,已随 `4b1f4187` 撤回)· ⛔ 不恢复(见 3.x 节)· ➖ 忽略
+> 状态图例:✅ 已恢复(`6a41c46a`/`a6d8ecfa`)· ⛔ 不恢复(见 3.x 节)· ⬜ 待恢复· ➖ 忽略
 
 | 编号 | 优先级 | 功能 | 位置 | 恢复成本 | 状态 |
 |---|---|---|---|---|---|
-| R1 | P0 | 登出轮换的 logout 事件补充 | `RandomPlayerbotMgr.cpp:378-396` | 低 | ⬜ 待恢复 |
-| R2 | P0 | LFG/副本排队活跃检测 | `PlayerbotAI.cpp:627-642` | 低 | ⬜ 待恢复 |
-| R3 | P0 | 开锁/剥皮 `CMSG_GAMEOBJ_USE` | `PlayerbotAI.cpp:2426-2443` | 低 | ⬜ 待恢复 |
-| R4 | P0 | 被控状态(root/stun/confuse)检查 | `PlayerbotAI.cpp:1303-1304` | 低 | ⬜ 待恢复 |
-| R5 | P0 | 术士灵魂碎片检查 | `WarlockActions.cpp:11` | 低 | ⬜ 待恢复 |
-| R6 | P1 | 真人公会活跃 `IsInRealGuild` | `PlayerbotAI.cpp:562-568` | 中 | ⬜ 待恢复 |
-| R7 | P1 | 好友/邻近玩家活跃判定 | `PlayerbotAI.cpp:571-574, 645-668` | 中 | ⬜ 待恢复 |
-| R8 | P1 | 升级自动传送/换装 | `AutoMaintenanceOnLevelupAction.cpp:20-58` | 中 | ⬜ 待恢复 |
-| R9 | P1 | 玩家登录自动登录 bot | `PlayerbotMgr.cpp:1275-1305` | 中 | ⬜ 待恢复 |
-| R10 | P1 | 正常登出流程(取消强制即时登出) | `PlayerbotMgr.cpp:382-402` | 中 | ⬜ 待恢复 |
-| R11 | P1 | `idleBot` 空闲判断恢复 | `RandomPlayerbotMgr.cpp:439-449` | 低 | ⬜ 待恢复 |
-| R12 | P1 | 防拥挤传送 / RPG 目的地传送 | `RandomPlayerbotMgr.cpp:1001-1057` | 中 | ⬜ 待恢复 |
+| R1 | P0 | 登出轮换的 logout 事件补充 | `RandomPlayerbotMgr.cpp:378-396` | 低 | ✅ 已恢复 |
+| R2 | P0 | LFG/副本排队活跃检测 | `PlayerbotAI.cpp:627-642` | 低 | ✅ 已恢复 |
+| R3 | P0 | 开锁/剥皮 `CMSG_GAMEOBJ_USE` | `PlayerbotAI.cpp:2426-2443` | 低 | ✅ 已恢复 |
+| R4 | P0 | 被控状态(root/stun/confuse)检查 | `PlayerbotAI.cpp:1303-1304` | 低 | ✅ 已恢复 |
+| R5 | P0 | 术士灵魂碎片检查 | `WarlockActions.cpp:11` | 低 | ✅ 已恢复 |
+| R6 | P1 | 真人公会活跃 `IsInRealGuild` | `PlayerbotAI.cpp:562-568` | 中 | ✅ 已恢复 |
+| R7 | P1 | 好友/邻近玩家活跃判定 | `PlayerbotAI.cpp:571-574, 645-668` | 中 | ✅ 已恢复 |
+| R8 | P1 | 升级自动传送/换装 | `AutoMaintenanceOnLevelupAction.cpp:20-58` | 中 | ✅ 已恢复 |
+| R9 | P1 | 玩家登录自动登录 bot | `PlayerbotMgr.cpp:1275-1305` | 中 | ✅ 已恢复 |
+| R10 | P1 | 正常登出流程(取消强制即时登出) | `PlayerbotMgr.cpp:382-402` | 中 | ⛔ 不恢复(见 3.10) |
+| R11 | P1 | `idleBot` 空闲判断恢复 | `RandomPlayerbotMgr.cpp:439-449` | 低 | ⛔ 不恢复(见 3.11) |
+| R12 | P1 | 防拥挤传送 / RPG 目的地传送 | `RandomPlayerbotMgr.cpp:1001-1057` | 中 | ✅ 已恢复 |
 | R13 | P2 | bot 活跃百分比(核心活动开关) | `PlayerbotAI.cpp:676-705` | 高 | ⬜ 待恢复 |
 | R14 | P2 | Flee 逃跑行为 | `MovementActions.cpp:816+` | 高 | ⬜ 待恢复 |
 | R15 | P2 | 等级随在线玩家同步 | `RandomPlayerbotMgr.cpp:530-532` | 高 | ⬜ 待恢复 |
@@ -219,8 +221,12 @@
 ### 3.19 P0/P1 撤回记录(2024-08-05)
 
 - **实施**:`bd73e1f`(P0:R1-R5)、`94131ef`(P1:R6-R9,R12)按本清单实施并部署。
-- **撤回**:因启动卡死(见第 1 节"启动死循环修复")排查,用户决定整体撤回,`4b1f4187` revert 上述两提交及配套文档提交(`76ff456`/`159db45`/`e0ddc14`)。**当前代码不含任何 R1-R18 恢复**。
-- **结论**:启动卡死根因是 `PlayerbotsDatabase` 连接池未打开(`844ebaa9` 修复),与 P0/P1 运行时改动无直接关联。后续如需恢复,按 §8 顺序从头执行即可(R1 已有现成实现参考,见 git 历史 `bd73e1f`/`94131ef`)。
+- **撤回**:因启动卡死(见第 1 节"启动死循环修复")排查,用户决定整体撤回,`4b1f4187` revert 上述两提交及配套文档提交(`76ff456`/`159db45`/`e0ddc14`)。
+- **结论**:启动卡死根因是 `PlayerbotsDatabase` 连接池未打开(`844ebaa9` 修复),与 P0/P1 运行时改动无直接关联。
+- **二次恢复(2024-08-06)**:启动卡死与天赋越界崩溃(`c71271dd`)修复后,经用户确认重新执行:
+  - P0:`6a41c46a`(cherry-pick `bd73e1f`)
+  - P1:`a6d8ecfa`(cherry-pick `94131ef`)
+  - 均 RelWithDebInfo 0 error 并部署;R10/R11 维持不恢复。
 
 ---
 
