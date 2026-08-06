@@ -10,10 +10,20 @@
 #include "Playerbots.h"
 #include "ServerFacade.h"
 
+namespace
+{
+    // True while the bot is carrying a battleground flag.
+    // Warsong Gulch and Twin Peaks share the same flag auras.
+    bool IsCarryingFlag(Player* bot)
+    {
+        return bot->HasAura(23333) || bot->HasAura(23335);
+    }
+}
+
 bool AttackEnemyPlayerAction::isUseful()
 {
-    //if (PlayerHasFlag::IsCapturingFlag(bot))
-        //return false;
+    if (IsCarryingFlag(bot))
+        return false;
 
     return !sPlayerbotAIConfig->IsPvpProhibited(bot->GetZoneId(), bot->GetAreaId());
 }
@@ -104,8 +114,8 @@ bool AttackAnythingAction::isPossible()
 
 bool DpsAssistAction::isUseful()
 {
-    //if (PlayerHasFlag::IsCapturingFlag(bot))
-        //return false;
+    if (IsCarryingFlag(bot))
+        return false;
 
     return true;
 }

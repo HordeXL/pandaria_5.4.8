@@ -50,33 +50,37 @@ bool ReleaseSpiritAction::Execute(Event event)
     packet << uint8(0);
     bot->GetSession()->HandleRepopRequestOpcode(packet);
 
-    // // add waiting for ress aura
-    // if (bot->InBattleground() && !botAI->HasAura(SPELL_WAITING_FOR_RESURRECT, bot) && !bot->IsAlive())
-    // {
-    //     // cast Waiting for Resurrect
-    //     GuidVector npcs = AI_VALUE(GuidVector, "nearest npcs");
-    //     ObjectGuid guid;
-    //     Unit* unit;
-    //     for (GuidVector::iterator i = npcs.begin(); i != npcs.end(); i++)
-    //     {
-    //         unit = botAI->GetUnit(*i);
-    //         if (unit && unit->IsSpiritService())
-    //         {
-    //             guid = unit->GetGUID();
-    //             break;
-    //         }
-    //     }
-    //     if (!guid) {
-    //         return true;
-    //     }
-    //     if (bot->GetDistance(unit) >= INTERACTION_DISTANCE) {
-    //         bot->GetMotionMaster()->MoveChase(unit);
-    //     } else {
-    //         WorldPacket packet(CMSG_GOSSIP_HELLO);
-    //         packet << guid;
-    //         bot->GetSession()->HandleGossipHelloOpcode(packet);
-    //     }
-    // }
+    // add waiting for ress aura
+    if (bot->InBattleground() && !botAI->HasAura(SPELL_WAITING_FOR_RESURRECT, bot) && !bot->IsAlive())
+    {
+        // cast Waiting for Resurrect
+        GuidVector npcs = AI_VALUE(GuidVector, "nearest npcs");
+        ObjectGuid guid;
+        Unit* unit = nullptr;
+        for (GuidVector::iterator i = npcs.begin(); i != npcs.end(); i++)
+        {
+            unit = botAI->GetUnit(*i);
+            if (unit && unit->IsSpiritService())
+            {
+                guid = unit->GetGUID();
+                break;
+            }
+        }
+        if (!guid)
+        {
+            return true;
+        }
+        if (bot->GetDistance(unit) >= INTERACTION_DISTANCE)
+        {
+            bot->GetMotionMaster()->MoveChase(unit);
+        }
+        else
+        {
+            WorldPacket packet(CMSG_GOSSIP_HELLO);
+            packet << guid;
+            bot->GetSession()->HandleGossipHelloOpcode(packet);
+        }
+    }
 
     return true;
 }
