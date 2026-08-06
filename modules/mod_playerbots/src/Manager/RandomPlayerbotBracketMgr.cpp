@@ -86,6 +86,7 @@ void RandomBotBacketManager::AdjustBotToRange(Player* bot, int targetRangeIndex,
     }
 
     sRandomPlayerbotMgr->TagForRandomize(bot, newLevel, urand(15, 55));
+    TC_LOG_INFO("playerbots", "[BotLevelBrackets] AdjustBotToRange: bot '%s' level %u -> %u (range %u-%u)", bot->GetName().c_str(), botOriginalLevel, newLevel, factionRanges[targetRangeIndex].lower, factionRanges[targetRangeIndex].upper);
 
     if (_BotDistDebugMode)
     {

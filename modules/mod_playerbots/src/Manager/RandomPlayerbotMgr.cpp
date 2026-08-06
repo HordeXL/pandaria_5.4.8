@@ -484,6 +484,7 @@ bool RandomPlayerbotMgr::ProcessBot(Player* player)
         {
             PerformanceMonitorOperation* pmo = sPerformanceMonitor->start(PERF_MON_RNDBOT, "Randomize");
             uint8 level = GetValue(bot, "level");
+            TC_LOG_INFO("playerbots", "ProcessBot: bot #%u level %u randomizing to level %u", bot.GetCounter(), player->GetLevel(), level);
             if (level)
                 Randomize(player);
             else
