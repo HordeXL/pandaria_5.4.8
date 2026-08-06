@@ -26,6 +26,21 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
         return false;
     }
 
+    // Cross-map invite: teleport to the leader's map first, then accept on a
+    // later tick once the teleport finished. Accepting while m_currMap still
+    // points at the old map makes Group::BroadcastGroupUpdate hit
+    // "WorldObject::AddToUpdate - invalid map".
+    Player* leader = ObjectAccessor::FindPlayer(grp->GetLeaderGUID());
+    if (leader && leader->IsInWorld() && leader->GetMapId() != bot->GetMapId())
+    {
+        if (!bot->IsBeingTeleported())
+        {
+            bot->TeleportTo(leader->GetMapId(), leader->GetPositionX(), leader->GetPositionY(), leader->GetPositionZ(), leader->GetOrientation());
+            botAI->SetNextCheckDelay(3000);
+        }
+        return true;  // teleporting; the "group invite" trigger re-fires after arrival
+    }
+
     TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s accepting invite", bot->GetName().c_str());
 
     // Accept the invite (synchronous, bot joins the group).
