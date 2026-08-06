@@ -26,6 +26,9 @@
 | 2024-08-06 | **InitTalentsTree 越界崩溃修复**(`c71271dd`) | 根因:`premadeSpecLink[MAX_CLASSES][MAX_SPECIALIZATIONS-1]` 第二维仅 3,`GetSpectab()` 对德鲁伊恢复返回 3 → `premadeSpecLink[class][3]` 越界 UB,`BotFactory.cpp:388` 读垃圾内存崩溃。修复:数组第二维扩为 `[MAX_SPECIALIZATIONS]`(与加载循环匹配)+ `BotFactory.cpp` 加 class/spec_tab 边界防御 |
 | 2024-08-06 | **P0 批次恢复**(`6a41c46a`) | cherry-pick `bd73e1f`,恢复 R1 登出冷却、R2 LFG 活跃、R3 开锁/剥皮、R4 被控状态、R5 灵魂碎片。RelWithDebInfo 0 error,已部署 |
 | 2024-08-06 | **P1 批次恢复**(`a6d8ecfa`) | cherry-pick `94131ef`,恢复 R6 真人公会、R7 邻近/好友活跃、R8 升级传送、R9 玩家登录 bot、R12 防拥挤。RelWithDebInfo 0 error,已部署。R10/R11 保持不恢复 |
+| 2024-08-06 | **P2a 恢复**(`e10e3184`) | R16 战场夺旗判断(`IsCarryingFlag` 重写,旗帜 aura 23333/23335)、R17 战场死亡等待复活(取消注释+适配)。RelWithDebInfo 0 error,已部署 |
+| 2024-08-06 | **P2b 恢复**(`92fe8828`) | R14 Flee 逃跑:取消注释主体(154 行),适配 `getThreatManager()` 小写,`FleeManager` 段保留注释,简化返回 `foundFlee`。RelWithDebInfo 0 error,已部署 |
+| 2024-08-06 | **P2c 恢复**(`17d49a5c`) | R15 等级同步(`_playersLevel` 每 5 分钟统计在线真人平均等级,`SyncLevelWithPlayers` 默认关)、R18 副本策略(`ApplyInstanceStrategies` 重写:副本内应用 `dps aoe,tank assist`)、R13 活跃百分比(`botActiveAlone` 配置 + `AutoScaleActivity`,移除 `AllowActive` 的 `return true` 短路)。RelWithDebInfo 0 error,已部署 |
 
 ---
 
@@ -47,12 +50,12 @@
 | R10 | P1 | 正常登出流程(取消强制即时登出) | `PlayerbotMgr.cpp:382-402` | 中 | ⛔ 不恢复(见 3.10) |
 | R11 | P1 | `idleBot` 空闲判断恢复 | `RandomPlayerbotMgr.cpp:439-449` | 低 | ⛔ 不恢复(见 3.11) |
 | R12 | P1 | 防拥挤传送 / RPG 目的地传送 | `RandomPlayerbotMgr.cpp:1001-1057` | 中 | ✅ 已恢复 |
-| R13 | P2 | bot 活跃百分比(核心活动开关) | `PlayerbotAI.cpp:676-705` | 高 | ⬜ 待恢复 |
-| R14 | P2 | Flee 逃跑行为 | `MovementActions.cpp:816+` | 高 | ⬜ 待恢复 |
-| R15 | P2 | 等级随在线玩家同步 | `RandomPlayerbotMgr.cpp:530-532` | 高 | ⬜ 待恢复 |
-| R16 | P2 | 战场夺旗判断 | `ChooseTargetActions.cpp:15-24, 107-108` | 中 | ⬜ 待恢复 |
-| R17 | P2 | 战场死亡等待复活 aura | `ReleaseSpiritAction.cpp:53-79` | 中 | ⬜ 待恢复 |
-| R18 | P2 | 副本策略 `applyInstanceStrategies` | `PlayerbotAI.cpp:789-790, 1089-1090` | 高 | ⬜ 待恢复 |
+| R13 | P2 | bot 活跃百分比(核心活动开关) | `PlayerbotAI.cpp:676-705` | 高 | ✅ 已恢复(重写) |
+| R14 | P2 | Flee 逃跑行为 | `MovementActions.cpp:816+` | 高 | ✅ 已恢复(简化版) |
+| R15 | P2 | 等级随在线玩家同步 | `RandomPlayerbotMgr.cpp:530-532` | 高 | ✅ 已恢复(重写) |
+| R16 | P2 | 战场夺旗判断 | `ChooseTargetActions.cpp:15-24, 107-108` | 中 | ✅ 已恢复(重写) |
+| R17 | P2 | 战场死亡等待复活 aura | `ReleaseSpiritAction.cpp:53-79` | 中 | ✅ 已恢复 |
+| R18 | P2 | 副本策略 `applyInstanceStrategies` | `PlayerbotAI.cpp:789-790, 1089-1090` | 高 | ✅ 已恢复(简化版) |
 | R19 | 忽略 | 旧实现被替代(见 4 节) | — | — | ➖ 忽略 |
 
 ---
@@ -169,54 +172,47 @@
 - **风险**:中
 - **验证**:大城区不再堆满 bot
 
-### 3.13 R13 — bot 活跃百分比(P2)
+### 3.13 R13 — bot 活跃百分比(P2) ✅
 
-- **位置**:`PlayerbotAI.cpp:676-705`
-- **现状**:`IsActive()` 主体被注释,恒 `return false`(除强制条件)
-- **功能**:按 `botActiveAlone` 百分比决定 bot 是否"活跃"(活跃才做任务/传送,不活跃则挂机),配合 `RandomChangeMultiplier` 动态缩放
-- **恢复步骤**:需重写——`botActiveAlone` 配置、`AutoScaleActivity()`/`GetFixedBotNumer()`/`BotTypeNumber` 均不存在,参考上游 azerothcore playerbots `PlayerbotAI::IsActive()` 重写并补配置
-- **风险**:高;影响所有 bot 行为(建议最后做,或保持禁用)
-- **验证**:按配置比例,部分 bot 活跃部分挂机
+- **位置**:`PlayerbotAI.cpp`(AllowActive 446+, 503-505, 703-724)
+- **实现**:移除 `return true;` 短路;新增 `botActiveAlone`/`botActiveAloneSmartScale`/`SmartScaleWhenMinLevel/MaxLevel` 配置(`AiPlayerbot.BotActiveAlone*`,默认 20/off/60/80);恢复 100% 快捷分支与百分比缩放逻辑(简化 `GetFixedBotNumer` 为 `urand(1,100) <= chance`);新增 `AutoScaleActivity()` 等级缩放
+- **风险**:高(影响所有 bot 活动判定);用户 conf `BotActiveAlone = 100` = 全活跃
+- **验证**:RelWithDebInfo 0 error,已部署
 
-### 3.14 R14 — Flee 逃跑(P2)
+### 3.14 R14 — Flee 逃跑(P2) ✅(简化版)
 
-- **位置**:`MovementActions.cpp:816+`(`Flee()` 首行 `return true;`,约 160 行被注释)
-- **功能**:低血量/被集火时向坦克/治疗/主人方向逃跑
-- **恢复步骤**:重写中段;`FleeManager` 类已不存在,需用现有 API(`MoveNear`/`PlayerBotSpec::IsTank`/`IsHeal`)重新实现简化版
-- **风险**:高
-- **验证**:bot 残血会拉开距离
+- **位置**:`MovementActions.cpp:816+`
+- **实现**:取消注释 Flee() 主体 154 行(被攻击时逃向坦克/治疗/远程队友或主人);适配 5.4.8 API `getThreatManager()`(小写);`FleeManager` 段保留注释,函数尾简化 `return foundFlee;`
+- **风险**:中(战斗行为,已部署可观察)
+- **验证**:RelWithDebInfo 0 error,已部署
 
-### 3.15 R15 — 等级同步(P2)
+### 3.15 R15 — 等级同步(P2) ✅(重写)
 
-- **位置**:`RandomPlayerbotMgr.cpp:530-532`
-- **功能**:在线玩家平均等级变化时调整 bot 等级池
-- **依赖**:配置与 `playersLevel` 局部变量已删,需重写
-- **风险**:高(等级池影响面大)
-- **验证**:玩家普遍满级后新 bot 等级分布变化
+- **位置**:`RandomPlayerbotMgr.cpp`(UpdateAIInternal 开头 + RandomizeFirst)
+- **实现**:`UpdateAIInternal` 每 5 分钟遍历在线真人玩家统计平均等级到 `_playersLevel`;`RandomizeFirst` 恢复按 `_playersLevel` 限制最高等级;新增 `AiPlayerbot.SyncLevelWithPlayers` 配置(默认 false,conf.dist 已有默认 0)
+- **风险**:低(默认关闭)
+- **验证**:RelWithDebInfo 0 error,已部署
 
-### 3.16 R16 — 战场夺旗(P2)
+### 3.16 R16 — 战场夺旗(P2) ✅(重写)
 
-- **位置**:`ChooseTargetActions.cpp:15-24, 107-108`
-- **功能**:`PlayerHasFlag::IsCapturingFlag` 判断(我方夺旗时优先防守)
-- **依赖**:`PlayerHasFlag::IsCapturingFlag` 已不存在,需按战场旗帜 aura(如 `SPELL_...` 旗 debuff)重写
-- **风险**:中
-- **验证**:战场中夺旗 bot 被集火
+- **位置**:`ChooseTargetActions.cpp:15-19, 107-110`
+- **实现**:新增匿名辅助 `IsCarryingFlag(Player*)`(检查旗帜 aura 23333/23335,战歌/双子峰共用);夺旗时 `AttackEnemyPlayerAction`/`DpsAssistAction` 返回 false
+- **风险**:低(仅战场场景)
+- **验证**:RelWithDebInfo 0 error,已部署
 
-### 3.17 R17 — 战场死亡复活 aura(P2)
+### 3.17 R17 — 战场死亡复活 aura(P2) ✅
 
 - **位置**:`ReleaseSpiritAction.cpp:53-79`
-- **功能**:战场死亡后等待复活计时,避免秒跑尸
-- **恢复步骤**:取消注释并适配当前战场 API
-- **风险**:中
-- **验证**:战场死亡 bot 按节奏释放灵魂
+- **实现**:取消注释战场死亡分支:找灵魂医者(`IsSpiritService`),超距离 `MoveChase`、近距离发 `CMSG_GOSSIP_HELLO` 释放;`Unit* unit` 初始化 nullptr
+- **风险**:低(仅战场场景)
+- **验证**:RelWithDebInfo 0 error,已部署
 
-### 3.18 R18 — 副本策略(P2)
+### 3.18 R18 — 副本策略(P2) ✅(简化版)
 
-- **位置**:`PlayerbotAI.cpp:789-790, 1089-1090`
-- **功能**:进副本应用副本专属策略(`applyInstanceStrategies`)
-- **依赖**:函数已删除,需按副本 ID 表重写
-- **风险**:高
-- **验证**:进本后 bot 切换对应策略
+- **位置**:`PlayerbotAI.cpp`(ApplyInstanceStrategies 实现 + ResetStrategies/远距传送后调用点)
+- **实现**:重写 `ApplyInstanceStrategies(mapId, remove)`:`IsDungeon()` 时对非战斗策略应用 `dps aoe,tank assist`(策略注册表现存);恢复 `ResetStrategies()` 与远距离传送后的移除调用点;新增 `AiPlayerbot.ApplyInstanceStrategies` 配置(默认 true,conf.dist 已有)
+- **风险**:低(仅副本内策略)
+- **验证**:RelWithDebInfo 0 error,已部署
 
 ### 3.19 P0/P1 撤回记录(2024-08-05)
 
