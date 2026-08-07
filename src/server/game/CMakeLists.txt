@@ -311,6 +311,10 @@ add_library(game STATIC
 
 add_dependencies(game revision.h)
 
+# ACE is built as a static library; without this macro its headers emit
+# dllimport declarations which then fail to link (LNK2019 __imp_* symbols).
+target_compile_definitions(game PRIVATE ACE_AS_STATIC_LIBS)
+
 if(ELUNA)
   target_link_libraries(game lua)
   target_compile_definitions(game PRIVATE ELUNA=1)
