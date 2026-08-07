@@ -449,7 +449,14 @@ void AuctionHouseMgr::AddAItem(Item* it)
     TRINITY_WRITE_GUARD(ACE_RW_Thread_Mutex, mAitemsLock);
 
     ASSERT(it);
-    ASSERT(mAitems.find(it->GetGUIDLow()) == mAitems.end());
+    if (mAitems.find(it->GetGUIDLow()) != mAitems.end())
+    {
+        // Duplicate GUID (e.g. an interrupted AHBot run left a stale entry).
+        // Replace instead of ASSERT-ing so the world thread never stalls on
+        // a breakpoint (observed as a frozen client with a live console).
+        TC_LOG_ERROR("misc", "AuctionHouseMgr::AddAItem: duplicate item GUID %u - replacing stale entry", it->GetGUIDLow());
+        delete mAitems[it->GetGUIDLow()];
+    }
     mAitems[it->GetGUIDLow()] = it;
 }
 
