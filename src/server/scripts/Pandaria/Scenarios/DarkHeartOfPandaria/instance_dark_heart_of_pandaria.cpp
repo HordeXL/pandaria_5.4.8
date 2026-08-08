@@ -182,9 +182,13 @@ class instance_dark_heart_of_pandaria : public InstanceMapScript
                         {
                             if (Creature* artifact = instance->GetCreature(itr))
                             {
+                                auto artifactItr = invArtifactsType.find(artifact->GetEntry());
+                                if (artifactItr == invArtifactsType.end())
+                                    continue;
+
                                 artifact->SetVisible(true);
-                                artifact->CastSpell(artifact, invArtifactsType.find(artifact->GetEntry())->second[0], true);
-                                artifact->CastSpell(artifact, invArtifactsType.find(artifact->GetEntry())->second[1], true);
+                                artifact->CastSpell(artifact, artifactItr->second[0], true);
+                                artifact->CastSpell(artifact, artifactItr->second[1], true);
                             }
                         }
                         break;

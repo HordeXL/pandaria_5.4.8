@@ -223,15 +223,26 @@ void PlayerbotHolder::HandlePlayerBotLoginCallback(PlayerbotLoginQueryHolder con
 
 void PlayerbotHolder::UpdateSessions()
 {
-    for (PlayerBotMap::const_iterator itr = GetPlayerBotsBegin(); itr != GetPlayerBotsEnd(); ++itr)
+    // Use a thread-safe snapshot to prevent iterator invalidation when
+    // DisablePlayerBot (Map thread) or LogoutPlayerBot (World thread)
+    // erases from playerBots during iteration.
+    PlayerBotMap bots = GetAllBotsSafe();
+    for (auto const& itr : bots)
     {
-        Player* const bot = itr->second;
+        Player* const bot = itr.second;
+        if (!bot)
+            continue;
+
         if (bot->IsBeingTeleported())
         {
+            // Defer HandleTeleportAck to the Map thread via RequestOp.
+            // HandleTeleportAck calls AddPlayerToMap, HandleMoveTeleportAck,
+            // and HandleMoveWorldportAckOpcode which all modify Map/Player
+            // state and must not run on the World thread.
             PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
             if (botAI)
             {
-                botAI->HandleTeleportAck();
+                botAI->RequestOp(PlayerbotAI::BOT_OP_TELEPORT_ACK);
             }
         }
         else if (bot->IsInWorld())
@@ -268,7 +279,8 @@ void PlayerbotHolder::LogoutAllBots()
     }
     */
 
-    PlayerBotMap bots = playerBots;
+    // Thread-safe snapshot under shared lock.
+    PlayerBotMap bots = GetAllBotsSafe();
     for (auto& itr : bots)
     {
         Player* bot = itr.second;
@@ -280,6 +292,11 @@ void PlayerbotHolder::LogoutAllBots()
             continue;
 
         LogoutPlayerBot(bot->GetGUID());
+
+        // Small delay between logouts to avoid blocking the World thread
+        // for too long when many bots are logged out at once (e.g. on
+        // master logout). Each logout involves SaveToDB + LogoutPlayer.
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
@@ -325,6 +342,11 @@ void PlayerbotMgr::CancelLogout()
 
 void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
 {
+    // IMPORTANT: This function deletes the bot's WorldSession and Player
+    // objects. It must only be called from the World thread (via
+    // UpdateAIInternal/UpdateSessions/OnPlayerLogout), never from a Map
+    // worker thread, because other Map threads may still be ticking the
+    // bot's auras, pets, or AI. All current callers are on the World thread.
     if (Player* bot = GetPlayerBot(guid))
     {
         PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
@@ -403,7 +425,7 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
             }
             else
             {
-                playerBots.erase(guid);     // deletes bot player ptr inside this WorldSession PlayerBotMap
+                { std::unique_lock<std::shared_mutex> lock(_playerBotsMutex); playerBots.erase(guid); }
                 delete botWorldSessionPtr;  // finally delete the bot's WorldSession
                 //if (target)
                     //delete target;
@@ -413,7 +435,7 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
         else if (bot && (logout || !botWorldSessionPtr->isLogingOut()))
         {
             botAI->TellMaster("Goodbye!");
-            playerBots.erase(guid);                  // deletes bot player ptr inside this WorldSession PlayerBotMap
+            { std::unique_lock<std::shared_mutex> lock(_playerBotsMutex); playerBots.erase(guid); }
             botWorldSessionPtr->LogoutPlayer(true);  // this will delete the bot Player object and PlayerbotAI object
             delete botWorldSessionPtr;               // finally delete the bot's WorldSession
         }
@@ -457,7 +479,7 @@ void PlayerbotHolder::DisablePlayerBot(ObjectGuid guid)
         //        delete target;
         //}
 
-        playerBots.erase(guid);  // deletes bot player ptr inside this WorldSession PlayerBotMap
+        { std::unique_lock<std::shared_mutex> lock(_playerBotsMutex); playerBots.erase(guid); }
 
         delete botAI;
     }
@@ -466,12 +488,20 @@ void PlayerbotHolder::DisablePlayerBot(ObjectGuid guid)
 Player* PlayerbotHolder::GetPlayerBot(uint32 lowGuid) const
 {
     ObjectGuid playerGuid = ObjectGuid(MAKE_NEW_GUID(lowGuid, 0, HIGHGUID_PLAYER));
+    std::shared_lock<std::shared_mutex> lock(_playerBotsMutex);
     PlayerBotMap::const_iterator it = playerBots.find(playerGuid);
     return (it == playerBots.end()) ? 0 : it->second;
 }
 
+PlayerBotMap PlayerbotHolder::GetAllBotsSafe() const
+{
+    std::shared_lock<std::shared_mutex> lock(_playerBotsMutex);
+    return playerBots;
+}
+
 Player* PlayerbotHolder::GetPlayerBot(ObjectGuid playerGuid) const
 {
+    std::shared_lock<std::shared_mutex> lock(_playerBotsMutex);
     PlayerBotMap::const_iterator it = playerBots.find(playerGuid);
     return (it == playerBots.end()) ? 0 : it->second;
 }
@@ -479,13 +509,17 @@ Player* PlayerbotHolder::GetPlayerBot(ObjectGuid playerGuid) const
 void PlayerbotHolder::OnBotLogin(Player* const bot)
 {
     // Prevent duplicate login
-    if (playerBots.find(bot->GetGUID()) != playerBots.end())
     {
-        return;
+        std::shared_lock<std::shared_mutex> lock(_playerBotsMutex);
+        if (playerBots.find(bot->GetGUID()) != playerBots.end())
+            return;
     }
 
     sPlayerbotsMgr->AddPlayerbotData(bot, true);
-    playerBots[bot->GetGUID()] = bot;
+    {
+        std::unique_lock<std::shared_mutex> lock(_playerBotsMutex);
+        playerBots[bot->GetGUID()] = bot;
+    }
     OnBotLoginInternal(bot);
 
     // Join chat channels. This must happen before the master check below:
@@ -797,20 +831,17 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
     if (!strcmp(cmd, "setspec") && master && master->GetTarget())
     {
         uint32 tab = std::atoi(charname);
-        WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
-        p << tab;
 
         auto bot = ObjectAccessor::FindPlayer(master->GetTarget());
         if (bot)
         {
-            bot->ResetTalents(true, true, true);
-            bot->GetSession()->HandeSetTalentSpecialization(p);
-            bot->ActivateSpec(0);
-            BotFactory factory(bot, bot->GetLevel());
-            factory.InitTalentsTree(false);
-            factory.InitEquipment(true);
-            GET_PLAYERBOT_AI(bot)->ResetStrategies();
-            GET_PLAYERBOT_AI(bot)->Reset(true);
+            PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+            if (botAI)
+            {
+                // Defer to Map thread: ResetTalents + InitEquipment modify Player
+                // UpdateFields and must run on the bot's own Map thread.
+                botAI->RequestOp(PlayerbotAI::BOT_OP_SETSPEC, tab);
+            }
         }
         return StringVector();
     }
@@ -849,10 +880,10 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
         if (!strcmp(charname, "reequip"))
         {
             uint32 count = 0;
+            std::vector<PlayerbotAI*> aiList;
 
-            // Collect bot pointers under read lock to prevent iterator invalidation
+            // Collect bot AI pointers under read lock to prevent iterator invalidation
             // when other threads modify the player map (login/logout) during iteration.
-            std::vector<Player*> botList;
             {
                 TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
                 auto const& allPlayers = ObjectAccessor::GetPlayers();
@@ -864,15 +895,29 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
                     PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
                     if (!botAI)
                         continue;
-                    // Set flag: the actual reequip runs on the Map thread in UpdateAI,
-                    // avoiding cross-thread Player object access that causes crashes.
-                    botAI->SetPendingReequip(true);
+                    aiList.push_back(botAI);
                     count++;
+                }
+
+                // Stagger reequip operations with random delays to prevent
+                // SMSG_UPDATE_OBJECT packet storms that freeze the client.
+                // Spread bots over ~5 bots/second (200ms per bot).
+                uint32 maxDelayMs = count * 200;
+                if (maxDelayMs < 1000)
+                    maxDelayMs = 1000;
+
+                for (PlayerbotAI* botAI : aiList)
+                {
+                    botAI->SetReequipDelay(urand(0, maxDelayMs));
+                    botAI->SetPendingReequip(true);
                 }
             }
 
             std::ostringstream ss;
-            ss << "Scheduled reequip for " << count << " bot(s). Processing on map thread.";
+            uint32 totalSeconds = (count * 200) / 1000;
+            if (totalSeconds < 1)
+                totalSeconds = 1;
+            ss << "Scheduled reequip for " << count << " bot(s) over ~" << totalSeconds << "s. Processing on map thread.";
             messages.push_back(ss.str());
             return messages;
         }
@@ -953,7 +998,13 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
                 continue;
 
             AddPlayerBot(guid, master->GetSession()->GetAccountId());
-            // ugly
+            // Wait for the bot to finish loading, then defer all Player-modifying
+            // operations (Randomize, InitTalentsTree, InitEquipment, TeleportTo) to
+            // the bot's Map thread via RequestOp.  The detached thread only polls
+            // ObjectAccessor::FindPlayer (lock-protected) and sets an atomic flag —
+            // it never touches Player object members directly, preventing the
+            // cross-thread data races that produce malformed SMSG_UPDATE_OBJECT
+            // packets and freeze the client.
             std::thread([this, master, guid]
             {
                 Player* bot = nullptr;
@@ -966,19 +1017,10 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
                     --max_try;
                 } while (bot == nullptr && max_try > 0);
                 if (!bot) return;
-                sRandomPlayerbotMgr->SetValue(bot, "level", master->GetLevel());
-                sRandomPlayerbotMgr->Randomize(bot);
-                BotFactory factory(bot, bot->GetLevel());
-                factory.InitTalentsTree(true);
-                factory.InitEquipment(true);
 
-                // Randomize() calls RandomTeleportForLevel() which moves the bot to a
-                // random location; bring it back so the freshly added bot stands by
-                // its master instead of somewhere random.
-                if (master->IsInWorld() && !master->IsBeingTeleported() && !bot->IsBeingTeleported())
-                {
-                    bot->TeleportTo(master->GetMapId(), master->GetPositionX(), master->GetPositionY(), master->GetPositionZ(), master->GetOrientation());
-                }
+                PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+                if (botAI)
+                    botAI->RequestOp(PlayerbotAI::BOT_OP_ADDCLASS, master->GetLevel(), master->GetGUID());
             }).detach();
             
             messages.push_back("Add class " + std::string(charname));

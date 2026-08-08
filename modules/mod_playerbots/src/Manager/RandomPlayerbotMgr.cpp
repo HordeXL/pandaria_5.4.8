@@ -102,15 +102,20 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
         _playersCheckTimer = time(nullptr);
         uint32 totalLevel = 0;
         uint32 count = 0;
-        for (auto const& p : ObjectAccessor::GetPlayers())
+        // Hold HashMapHolder read lock while iterating the player map to prevent
+        // iterator invalidation when other threads login/logout players.
         {
-            Player* player = p.second;
-            if (!player || !player->IsInWorld() || !player->GetSession())
-                continue;
-            if (sRandomPlayerbotMgr->IsRandomBot(player))
-                continue;
-            totalLevel += player->GetLevel();
-            ++count;
+            TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
+            for (auto const& p : ObjectAccessor::GetPlayers())
+            {
+                Player* player = p.second;
+                if (!player || !player->IsInWorld() || !player->GetSession())
+                    continue;
+                if (sRandomPlayerbotMgr->IsRandomBot(player))
+                    continue;
+                totalLevel += player->GetLevel();
+                ++count;
+            }
         }
         if (count)
             _playersLevel = totalLevel / count;
@@ -449,7 +454,11 @@ bool RandomPlayerbotMgr::ProcessBot(Player* player)
 
         if (!GetEventValue(bot, "revive"))
         {
-            Revive(player);
+            // Defer Revive (which calls Refresh → SetHealth/SetPower/SetMoney) to the
+            // bot's Map thread to avoid cross-thread UpdateField writes.
+            PlayerbotAI* botAI = GET_PLAYERBOT_AI(player);
+            if (botAI)
+                botAI->RequestOp(PlayerbotAI::BOT_OP_REVIVE);
             return true;
         }
 
@@ -485,10 +494,15 @@ bool RandomPlayerbotMgr::ProcessBot(Player* player)
             PerformanceMonitorOperation* pmo = sPerformanceMonitor->start(PERF_MON_RNDBOT, "Randomize");
             uint8 level = GetValue(bot, "level");
             TC_LOG_INFO("playerbots", "ProcessBot: bot #%u level %u randomizing to level %u", bot.GetCounter(), player->GetLevel(), level);
-            if (level)
-                Randomize(player);
-            else
-                RandomizeFirst(player);
+            // Defer to Map thread: Randomize/RandomizeFirst modify Player UpdateFields
+            // (GiveLevel, SetHealth, SetMoney, ResetTalents, InitEquipment, TeleportTo).
+            if (botAI)
+            {
+                if (level)
+                    botAI->RequestOp(PlayerbotAI::BOT_OP_RANDOMIZE, level);
+                else
+                    botAI->RequestOp(PlayerbotAI::BOT_OP_RANDOMIZE_FIRST);
+            }
             TC_LOG_DEBUG("playerbots", "Bot #%u %s:%u <%s>: randomized", bot.GetCounter(), player->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", player->GetLevel(), player->GetName().c_str());
             if (pmo)
                 pmo->finish();
@@ -504,14 +518,20 @@ bool RandomPlayerbotMgr::ProcessBot(Player* player)
             uint8 level = GetValue(bot, "level");
             if (!level)
             {
-                RandomizeFirst(player);
+                // Defer to Map thread
+                if (botAI)
+                    botAI->RequestOp(PlayerbotAI::BOT_OP_RANDOMIZE_FIRST);
                 if (pmo)
                     pmo->finish();
                 return true;
             }
 
-            Refresh(player);
-            RandomTeleportForLevel(player);
+            // Defer Refresh + RandomTeleportForLevel to Map thread.
+            // Refresh modifies SetHealth/SetPower/SetMoney/DurabilityRepairAll;
+            // RandomTeleportForLevel calls TeleportTo — both must run on the
+            // bot's Map thread to avoid cross-thread UpdateField / position writes.
+            if (botAI)
+                botAI->RequestOp(PlayerbotAI::BOT_OP_REFRESH_TELEPORT);
             uint32 time = urand(sPlayerbotAIConfig->minRandomBotTeleportInterval, sPlayerbotAIConfig->maxRandomBotTeleportInterval);
             ScheduleTeleport(bot, time);
             if (pmo)
@@ -528,6 +548,12 @@ void RandomPlayerbotMgr::TagForRandomize(Player* bot, uint32 level, uint32 delay
     uint32 guid = GUID_LOPART(bot->GetGUID());
 
     SetValue(bot, "level", level);
+    ScheduleRandomize(guid, delay);
+}
+
+void RandomPlayerbotMgr::TagForRandomize(uint32 guid, uint32 level, uint32 delay)
+{
+    SetValue(guid, "level", level);
     ScheduleRandomize(guid, delay);
 }
 
@@ -846,9 +872,12 @@ void RandomPlayerbotMgr::OnPlayerLogout(Player* player)
 
     DisablePlayerBot(player->GetGUID());
 
-    for (PlayerBotMap::const_iterator it = GetPlayerBotsBegin(); it != GetPlayerBotsEnd(); ++it)
+    // Use thread-safe snapshot to prevent iterator invalidation if another
+    // thread modifies playerBots during iteration.
+    PlayerBotMap bots = GetAllBotsSafe();
+    for (auto const& itr : bots)
     {
-        Player* const bot = it->second;
+        Player* const bot = itr.second;
         PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
         if (botAI && player == botAI->GetMaster())
         {
@@ -860,11 +889,13 @@ void RandomPlayerbotMgr::OnPlayerLogout(Player* player)
         }
     }
 
-    std::vector<Player*>::iterator i = std::find(_players.begin(), _players.end(), player);
-    if (i != _players.end())
-        {
+    // Move both find and erase inside the lock to prevent iterator
+    // invalidation if another thread modifies _players concurrently.
+    {
         std::lock_guard<std::mutex> guard(_playersMutex);
-        _players.erase(i);
+        std::vector<Player*>::iterator i = std::find(_players.begin(), _players.end(), player);
+        if (i != _players.end())
+            _players.erase(i);
     }
 }
 
@@ -1023,9 +1054,11 @@ void RandomPlayerbotMgr::OnPlayerLogin(Player* player)
 {
     uint32 botsNearby = 0;
 
-    for (PlayerBotMap::const_iterator it = GetPlayerBotsBegin(); it != GetPlayerBotsEnd(); ++it)
+    // Use thread-safe snapshot to prevent iterator invalidation.
+    PlayerBotMap bots = GetAllBotsSafe();
+    for (auto const& itr : bots)
     {
-        Player* const bot = it->second;
+        Player* const bot = itr.second;
         if (player == bot /* || GET_PLAYERBOT_AI(player)*/)  // TEST
             continue;
 
@@ -1111,11 +1144,15 @@ void RandomPlayerbotMgr::OnPlayerLoginError(uint32 bot)
 
 Player* RandomPlayerbotMgr::GetRandomPlayer()
 {
-    if (_players.empty())
+    // Use thread-safe GetPlayers() (returns a copy under _playersMutex)
+    // instead of accessing _players directly to avoid concurrent
+    // push_back/erase from OnPlayerLogin/OnPlayerLogout.
+    std::vector<Player*> players = GetPlayers();
+    if (players.empty())
         return nullptr;
 
-    uint32 index = std::rand() % _players.size();
-    return _players[index];
+    uint32 index = std::rand() % players.size();
+    return players[index];
 }
 
 void RandomPlayerbotMgr::PrepareAddclassCache()
@@ -1395,15 +1432,19 @@ const RandomPlayerbotMgr::farm_spot* RandomPlayerbotMgr::GetFarmZoneForPlayer(Pl
         if (zone.max_player != 0)
         {
             uint32 playercount = 0;
-            for (const auto& _internal_player : _players)
+            // Use thread-safe GetPlayers() to avoid concurrent vector modification.
+            std::vector<Player*> onlinePlayers = GetPlayers();
+            for (const auto& _internal_player : onlinePlayers)
             {
                 if (_internal_player && _internal_player->IsInWorld() && !_internal_player->IsBeingTeleported() && _internal_player->GetZoneId() == zone.zone_id && _internal_player != player)
                     ++playercount;
             }
 
-            for (PlayerBotMap::const_iterator itr = GetPlayerBotsBegin(); itr != GetPlayerBotsEnd(); ++itr)
+            // Use thread-safe snapshot for iteration.
+            PlayerBotMap botMap = GetAllBotsSafe();
+            for (auto const& itr : botMap)
             {
-                Player* const bot = itr->second;
+                Player* const bot = itr.second;
                 if (!bot || bot == player || !bot->IsInWorld() || bot->IsBeingTeleported()
                     || bot->GetZoneId() != zone.zone_id) continue;
 

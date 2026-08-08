@@ -100,6 +100,11 @@ public:
 private:
     std::map<uint16, std::string> _handlers;
     std::stack<WorldPacket> _queue;
+    // AddPacket can be called from any thread (World/Map broadcasts via
+    // WorldSession::SendPacket -> HandleBotOutgoingPacket), while Handle()
+    // runs on the bot's own Map thread. Without a lock the concurrent
+    // push/pop on std::stack causes data races and heap corruption.
+    std::mutex _queueMutex;
 };
 
 class PlayerbotAI : public PlayerbotAIBase
@@ -144,7 +149,34 @@ public:
     // This avoids cross-thread Player object access that causes data races / crashes.
     void SetPendingReequip(bool val) { _pendingReequip.store(val, std::memory_order_relaxed); }
     bool IsPendingReequip() const { return _pendingReequip.load(std::memory_order_relaxed); }
+    void SetReequipDelay(uint32 ms) { _reequipDelay.store(ms, std::memory_order_relaxed); }
     void DoReequip();
+
+    // -----------------------------------------------------------------------
+    // Unified pending-operation mechanism.
+    // Set from World thread (command handler / RandomPlayerbotMgr::ProcessBot),
+    // consumed on Map thread (UpdateAI).  All heavy Player-modifying operations
+    // (Randomize, Refresh, TeleportTo, ResetTalents, InitEquipment …) are deferred
+    // to the bot's own Map thread to prevent cross-thread UpdateField writes that
+    // produce malformed SMSG_UPDATE_OBJECT packets and freeze the client.
+    // -----------------------------------------------------------------------
+    enum PendingBotOp : uint8
+    {
+        BOT_OP_NONE = 0,
+        BOT_OP_ADDCLASS,        // Full randomize + talent + equip + teleport to master
+        BOT_OP_SETSPEC,         // Reset talents + set spec + re-equip
+        BOT_OP_RANDOMIZE,       // Full randomize (reset + equip + refresh + teleport)
+        BOT_OP_RANDOMIZE_FIRST, // First-time randomize
+        BOT_OP_REFRESH,         // Repair + heal + refresh equipment
+        BOT_OP_TELEPORT,        // Teleport for level
+        BOT_OP_REVIVE,          // Revive dead bot
+        BOT_OP_REFRESH_TELEPORT,// Refresh + teleport for level (combined)
+        BOT_OP_TELEPORT_ACK,    // Process pending teleport ack on Map thread
+    };
+
+    void        RequestOp(uint8 op, uint32 param = 0, ObjectGuid masterGuid = ObjectGuid::Empty);
+    uint8       GetPendingOp() const { return _pendingOp.load(std::memory_order_relaxed); }
+    void        ProcessPendingOp();
 
     Player* GetBot() { return bot; }
     Player* GetMaster() { return master; }
@@ -266,6 +298,12 @@ protected:
     bool _allowActive[MAX_ACTIVITY_TYPE];
     time_t _allowActiveCheckTimer[MAX_ACTIVITY_TYPE];
     std::atomic<bool> _pendingReequip{ false };
+    std::atomic<uint32> _reequipDelay{ 0 };  // ms remaining before reequip executes (stagger bulk reequips)
+    // Unified pending-op state (World-thread writes, Map-thread reads)
+    std::atomic<uint8>  _pendingOp{ BOT_OP_NONE };
+    std::atomic<uint32> _pendingOpParam{ 0 };        // level / spec tab
+    std::atomic<uint64> _pendingOpMasterGuid{ 0 };   // master GUID for addclass teleport
+    std::atomic<uint32> _pendingOpDelay{ 0 };        // ms remaining before heavy op executes (prevents packet storms)
     uint32 _lastItemCount = 0;
     uint32 _lootChatDelay = 0;
     uint32 _nextChannelChatTime = 0;

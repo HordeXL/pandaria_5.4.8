@@ -12,6 +12,7 @@
 #include "QueryHolder.h"
 #include "QueryResult.h"
 
+#include <shared_mutex>
 #include <unordered_set>
 
 class ChatHandler;
@@ -38,6 +39,9 @@ public:
     Player* GetPlayerBot(uint32 lowGuid) const;
     PlayerBotMap::const_iterator GetPlayerBotsBegin() const { return playerBots.begin(); }
     PlayerBotMap::const_iterator GetPlayerBotsEnd() const { return playerBots.end(); }
+    // Thread-safe snapshot of playerBots (callers must not hold the lock while
+    // iterating, so we return a copy under a shared lock).
+    PlayerBotMap GetAllBotsSafe() const;
 
     void UpdateAIInternal([[maybe_unused]] uint32 elapsed, [[maybe_unused]] bool minimal = false) override {};
     void UpdateSessions();
@@ -60,6 +64,7 @@ protected:
     virtual void OnBotLoginInternal(Player* const bot) = 0;
 
     PlayerBotMap playerBots;
+    mutable std::shared_mutex _playerBotsMutex;
     std::unordered_set<ObjectGuid> botLoading;
 };
 

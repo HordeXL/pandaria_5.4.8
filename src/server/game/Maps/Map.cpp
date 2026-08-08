@@ -786,7 +786,7 @@ void Map::RemoveFromMap(T *obj, bool remove)
     if (obj->isActiveObject() || obj->GetActiveFlags() != ActiveFlags::None)
         RemoveFromActive(obj);
     if (obj->HasCustomVisibility())
-        RemoveCustomVisibilityObject(obj, obj->GetCustomVisibilityZoneID());
+        RemoveCustomVisibilityObjectFromAll(obj);
 
     obj->UpdateObjectVisibility(true);
     obj->RemoveFromGrid();

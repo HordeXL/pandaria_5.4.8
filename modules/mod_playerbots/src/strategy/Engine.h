@@ -105,6 +105,20 @@ private:
 
     ActionExecutionListeners actionExecutionListeners;
 
+    // Re-entrancy guard: when an Action::Execute() triggers ChangeStrategy()
+    // -> Init() -> Reset(), the Reset() would delete the triggers/multipliers/
+    // queue containers that DoNextAction/ExecuteAction are currently iterating,
+    // causing a use-after-free. The guard defers Init() until the outermost
+    // tick scope exits, so containers are only rebuilt when no one is iterating.
+    int tickDepth = 0;
+    bool initPending = false;
+    struct TickScope
+    {
+        explicit TickScope(Engine* engine);
+        ~TickScope();
+        Engine* engine;
+    };
+
 protected:
     Queue queue;
     std::vector<TriggerNode*> triggers;

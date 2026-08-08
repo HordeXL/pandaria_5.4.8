@@ -51,6 +51,13 @@ inline void Trinity::VisibleNotifier::VisitSet(std::unordered_set<WorldObject*> 
     {
         WorldObject* object = *itr;
 
+        // Defensive: skip null or already-removed-from-world pointers.
+        // The set is now copied before iteration (GetCustomVisibilityObjects
+        // returns by value), so iterator invalidation is no longer the issue,
+        // but a pointer can still be stale if RemoveFromMap hasn't run yet.
+        if (!object || !object->IsInWorld())
+            continue;
+
         // Visit() would have handled it already, and doing it twice would build
         // a second create block for the same object.
         if (!vis_guids.erase(object->GetGUID()))

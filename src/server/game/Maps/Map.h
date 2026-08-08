@@ -34,6 +34,7 @@
 
 #include <bitset>
 #include <list>
+#include <shared_mutex>
 
 class Unit;
 class WorldPacket;
@@ -522,9 +523,40 @@ class Map : public GridRefManager<NGridType>
 
         void SetMMapErrorReportEnabled(bool on) { m_mmapErrorReportEnabled = on; }
 
-        void AddCustomVisibilityObject(WorldObject* obj, uint32 zoneId = 0) { (zoneId ? m_customVisibilityObjectsByZone[zoneId] : m_customVisibilityObjects).insert(obj); }
-        void RemoveCustomVisibilityObject(WorldObject* obj, uint32 zoneId = 0) { (zoneId ? m_customVisibilityObjectsByZone[zoneId] : m_customVisibilityObjects).erase(obj); }
-        std::unordered_set<WorldObject*> const& GetCustomVisibilityObjects(uint32 zoneId = 0) { return zoneId ? m_customVisibilityObjectsByZone[zoneId] : m_customVisibilityObjects; }
+        void AddCustomVisibilityObject(WorldObject* obj, uint32 zoneId = 0)
+        {
+            std::unique_lock<std::shared_mutex> lock(m_customVisibilityLock);
+            (zoneId ? m_customVisibilityObjectsByZone[zoneId] : m_customVisibilityObjects).insert(obj);
+        }
+        void RemoveCustomVisibilityObject(WorldObject* obj, uint32 zoneId = 0)
+        {
+            std::unique_lock<std::shared_mutex> lock(m_customVisibilityLock);
+            (zoneId ? m_customVisibilityObjectsByZone[zoneId] : m_customVisibilityObjects).erase(obj);
+        }
+        // Removes the object from every visibility set (global + all zones).
+        // Used during object destruction / RemoveFromMap to guarantee no
+        // dangling pointers remain even if the stored zoneId is stale.
+        void RemoveCustomVisibilityObjectFromAll(WorldObject* obj)
+        {
+            std::unique_lock<std::shared_mutex> lock(m_customVisibilityLock);
+            m_customVisibilityObjects.erase(obj);
+            for (auto& pair : m_customVisibilityObjectsByZone)
+                pair.second.erase(obj);
+        }
+        // Returns a *copy* of the visibility set so callers can iterate
+        // without risking iterator invalidation from concurrent Add/Remove.
+        std::unordered_set<WorldObject*> GetCustomVisibilityObjects(uint32 zoneId = 0)
+        {
+            std::shared_lock<std::shared_mutex> lock(m_customVisibilityLock);
+            if (zoneId)
+            {
+                auto itr = m_customVisibilityObjectsByZone.find(zoneId);
+                if (itr != m_customVisibilityObjectsByZone.end())
+                    return itr->second;
+                return {};
+            }
+            return m_customVisibilityObjects;
+        }
 
         uint32 GetUpdateTime() const { return m_updateTime; }
         void AddUpdateObject(Object* object) { m_updatable.insert(object); }
@@ -625,6 +657,7 @@ class Map : public GridRefManager<NGridType>
 
         std::unordered_set<WorldObject*> m_customVisibilityObjects;
         std::map<uint32, std::unordered_set<WorldObject*>> m_customVisibilityObjectsByZone;
+        mutable std::shared_mutex m_customVisibilityLock;
 
         typedef std::set<WorldObject*> ActiveNonPlayers;
         ActiveNonPlayers m_activeNonPlayers;

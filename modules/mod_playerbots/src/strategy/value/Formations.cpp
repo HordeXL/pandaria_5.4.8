@@ -440,7 +440,11 @@ float Formation::GetFollowAngle()
         PlayerbotMgr* masterBotMgr = GET_PLAYERBOT_MGR(master);
         if (masterBotMgr && !GET_PLAYERBOT_AI(master))
         {
-            for (auto it = masterBotMgr->GetPlayerBotsBegin(); it != masterBotMgr->GetPlayerBotsEnd(); ++it)
+            // Use thread-safe snapshot; playerBots may be modified by the
+            // World thread (AddPlayerBot/LogoutPlayerBot) while we iterate
+            // here on the Map thread.
+            PlayerBotMap bots = masterBotMgr->GetAllBotsSafe();
+            for (auto it = bots.begin(); it != bots.end(); ++it)
             {
                 if (it->second == bot)
                 {

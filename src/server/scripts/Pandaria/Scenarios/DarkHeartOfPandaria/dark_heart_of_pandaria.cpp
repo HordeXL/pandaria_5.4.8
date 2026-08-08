@@ -362,7 +362,8 @@ class npc_darkheart_grizzle_gearslip : public CreatureScript
                         scheduler.
                             Schedule(Milliseconds(delay += 5000), [this](TaskContext context)
                         {
-                            if (Creature* malkorok = ObjectAccessor::GetCreature(*me, me->GetInstanceScript() ? me->GetInstanceScript()->GetData64(NPC_MALKOROK) : 0))
+                            InstanceScript* inst = me->GetInstanceScript();
+                            if (Creature* malkorok = ObjectAccessor::GetCreature(*me, inst ? inst->GetData64(NPC_MALKOROK) : 0))
                                 malkorok->AI()->DoAction(ACTION_START_INTRO);
                         });
                         break;
@@ -508,20 +509,24 @@ class npc_darkheart_crafty_the_ambitious : public CreatureScript
                     me->OverrideInhabitType(INHABIT_AIR);
                     me->UpdateMovementFlags();
 
-                    if (Creature* norushen = ObjectAccessor::GetCreature(*me, me->GetInstanceScript() ? me->GetInstanceScript()->GetData64(NPC_NORUSHEN) : 0))
+                    // Cache the instance script pointer to avoid repeated calls
+                    // and potential null dereference if it becomes invalid between calls.
+                    InstanceScript* instance = me->GetInstanceScript();
+                    if (Creature* norushen = ObjectAccessor::GetCreature(*me, instance ? instance->GetData64(NPC_NORUSHEN) : 0))
                         norushen->AI()->Talk(TALK_INTRO);
 
                     me->HandleEmoteStateCommand(EMOTE_STATE_FLYFALL);
 
                     me->GetMotionMaster()->MovePoint(0, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 4.0f);
 
-                    if (GameObject* heartOfYshaarj = ObjectAccessor::GetGameObject(*me, me->GetInstanceScript() ? me->GetInstanceScript()->GetData64(GO_STRANGE_WALL) : 0))
+                    if (GameObject* heartOfYshaarj = ObjectAccessor::GetGameObject(*me, instance ? instance->GetData64(GO_STRANGE_WALL) : 0))
                         heartOfYshaarj->SetGoState(GO_STATE_ACTIVE);
 
                     scheduler.
                         Schedule(Milliseconds(7000), [this](TaskContext context)
                     {
-                        if (Creature* echo = ObjectAccessor::GetCreature(*me, me->GetInstanceScript() ? me->GetInstanceScript()->GetData64(NPC_ECHO_OF_YSHAARJ) : 0))
+                        InstanceScript* inst = me->GetInstanceScript();
+                        if (Creature* echo = ObjectAccessor::GetCreature(*me, inst ? inst->GetData64(NPC_ECHO_OF_YSHAARJ) : 0))
                         {
                             echo->SetVisible(true);
                             echo->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
@@ -829,13 +834,17 @@ class sat_darkheart_artifact : public IAreaTriggerOnce
         {
             if (Player* itr = target->ToPlayer())
             {
-                caster->RemoveAurasDueToSpell(invArtifactsType.find(caster->GetEntry())->second[0]);
+                auto artifactItr = invArtifactsType.find(caster->GetEntry());
+                if (artifactItr == invArtifactsType.end())
+                    return;
+
+                caster->RemoveAurasDueToSpell(artifactItr->second[0]);
 
                 if (caster->GetInstanceScript())
-                    caster->GetInstanceScript()->SetData(DATA_ARTIFACT, invArtifactsType.find(caster->GetEntry())->second[3]);
+                    caster->GetInstanceScript()->SetData(DATA_ARTIFACT, artifactItr->second[3]);
 
                 // Announce if need
-                if (invArtifactsType.find(caster->GetEntry())->second[2])
+                if (artifactItr->second[2])
                     caster->AI()->Talk(TALK_INTRO);
             }
         }

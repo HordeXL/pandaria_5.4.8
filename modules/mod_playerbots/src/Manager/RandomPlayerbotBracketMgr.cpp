@@ -7,7 +7,6 @@
 
 RandomBotBacketManager::RandomBotBacketManager()
     : _timer{ _BotDistCheckFrequency * 1000 }  // start high so first check runs immediately
-    , _BotDistDebugMode{ true }
 {
     _AllianceLevelRanges[0]     = { 1, 9,   2 };
     _AllianceLevelRanges[1]     = { 10, 19, 8 };
@@ -53,26 +52,21 @@ uint8 RandomBotBacketManager::GetRandomLevelInRange(const LevelRangeConfig& rang
     return urand(range.lower, range.upper);
 }
 
-void RandomBotBacketManager::AdjustBotToRange(Player* bot, int targetRangeIndex, const LevelRangeConfig* factionRanges)
+void RandomBotBacketManager::AdjustBotToRange(BotBracketInfo const& bot, int targetRangeIndex, const LevelRangeConfig* factionRanges)
 {
-    if (!bot || targetRangeIndex < 0 || targetRangeIndex >= NUM_RANGES)
+    if (targetRangeIndex < 0 || targetRangeIndex >= NUM_RANGES)
         return;
 
-    uint8 botOriginalLevel = bot->GetLevel();
+    uint8 botOriginalLevel = bot.level;
     uint8 newLevel = 0;
     // If the bot is a Death Knight, ensure level is not set below 55.
-    if (bot->GetClass() == CLASS_DEATH_KNIGHT)
+    if (bot.playerClass == CLASS_DEATH_KNIGHT)
     {
         uint8 lowerBound = factionRanges[targetRangeIndex].lower;
         uint8 upperBound = factionRanges[targetRangeIndex].upper;
         if (upperBound < 55)
         {
             // This target range is invalid for Death Knights.
-            if (_BotDistDebugMode)
-            {
-                //std::string playerFaction = IsAlliancePlayerBot(bot) ? "Alliance" : "Horde";
-                //TC_LOG_DEBUG("playerbots", "[BotLevelBrackets] AdjustBotToRange: Cannot assign Death Knight '%s' (%u) to range %u-%u (below level 55).", bot->GetName().c_str(), botOriginalLevel, lowerBound, upperBound);
-            }
             return;
         }
         // Adjust lower bound to 55 if necessary.
@@ -85,14 +79,11 @@ void RandomBotBacketManager::AdjustBotToRange(Player* bot, int targetRangeIndex,
         newLevel = GetRandomLevelInRange(factionRanges[targetRangeIndex]);
     }
 
-    sRandomPlayerbotMgr->TagForRandomize(bot, newLevel, urand(15, 55));
-    TC_LOG_INFO("playerbots", "[BotLevelBrackets] AdjustBotToRange: bot '%s' level %u -> %u (range %u-%u)", bot->GetName().c_str(), botOriginalLevel, newLevel, factionRanges[targetRangeIndex].lower, factionRanges[targetRangeIndex].upper);
-
-    if (_BotDistDebugMode)
-    {
-        std::string playerClassName = bot ? ClassToString((Classes)bot->GetClass()) : "Unknown";
-        //TC_LOG_DEBUG("playerbots", "[BotLevelBrackets] AdjustBotToRange: Bot '%s' - %s (%u) adjusted to level %u (target range %u-%u).", bot->GetName().c_str(), playerClassName.c_str(), botOriginalLevel, newLevel, _LevelRanges[targetRangeIndex].lower, _LevelRanges[targetRangeIndex].upper);
-    }
+    // Use GUID-based overload to avoid accessing Player* pointer
+    // (which may have been freed after the read lock was released).
+    sRandomPlayerbotMgr->TagForRandomize(bot.guid, newLevel, urand(15, 55));
+    TC_LOG_DEBUG("playerbots", "[BotLevelBrackets] AdjustBotToRange: bot #%u level %u -> %u (range %u-%u)",
+                 bot.guid, botOriginalLevel, newLevel, factionRanges[targetRangeIndex].lower, factionRanges[targetRangeIndex].upper);
 }
 
 void RandomBotBacketManager::Update(uint32 diff)
@@ -109,58 +100,59 @@ void RandomBotBacketManager::Update(uint32 diff)
     // Containers for Alliance bots.
     uint32 totalAllianceBots = 0;
     int allianceActualCounts[NUM_RANGES] = {0};
-    std::vector<Player*> allianceBotsByRange[NUM_RANGES];
+    std::vector<BotBracketInfo> allianceBotsByRange[NUM_RANGES];
 
     // Containers for Horde bots.
     uint32 totalHordeBots = 0;
     int hordeActualCounts[NUM_RANGES] = {0};
-    std::vector<Player*> hordeBotsByRange[NUM_RANGES];
+    std::vector<BotBracketInfo> hordeBotsByRange[NUM_RANGES];
 
-    // Acquire read lock to prevent iterator invalidation when other threads
-    // modify the player map (login/logout) during iteration.
-    TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
-    auto const& allPlayers = ObjectAccessor::GetPlayers();
-    for (auto const& itr : allPlayers)
+    // Phase 1: Collect bot data under read lock.
+    // The lock is scoped to ONLY the iteration phase so that database I/O
+    // and logging in Phase 2 do not block player login/logout.
     {
-        Player* player = itr.second;
-        if (!player || !player->IsInWorld())
-            continue;
-
-        if (!sRandomPlayerbotMgr->IsRandomBot(GUID_LOPART(player->GetGUID())))
-            continue;
-
-        auto team = player->GetTeam();
-        if (team == Team::ALLIANCE)
+        TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
+        auto const& allPlayers = ObjectAccessor::GetPlayers();
+        for (auto const& itr : allPlayers)
         {
-            totalAllianceBots++;
-            int rangeIndex = GetLevelRangeIndex(player->GetLevel());
-            if (rangeIndex >= 0)
+            Player* player = itr.second;
+            if (!player || !player->IsInWorld())
+                continue;
+
+            if (!sRandomPlayerbotMgr->IsRandomBot(GUID_LOPART(player->GetGUID())))
+                continue;
+
+            BotBracketInfo info;
+            info.guid = GUID_LOPART(player->GetGUID());
+            info.level = player->GetLevel();
+            info.playerClass = player->GetClass();
+
+            auto team = player->GetTeam();
+            if (team == Team::ALLIANCE)
             {
-                allianceActualCounts[rangeIndex]++;
-                allianceBotsByRange[rangeIndex].push_back(player);
+                totalAllianceBots++;
+                int rangeIndex = GetLevelRangeIndex(info.level);
+                if (rangeIndex >= 0)
+                {
+                    allianceActualCounts[rangeIndex]++;
+                    allianceBotsByRange[rangeIndex].push_back(info);
+                }
             }
-            else if (_BotDistDebugMode)
+            else if (team == Team::HORDE)
             {
-                TC_LOG_DEBUG("server.loading", "[BotLevelBrackets] Alliance bot '%s' with level %u does not fall into any defined range.",
-                            player->GetName().c_str(), player->GetLevel());
+                totalHordeBots++;
+                int rangeIndex = GetLevelRangeIndex(info.level);
+                if (rangeIndex >= 0)
+                {
+                    hordeActualCounts[rangeIndex]++;
+                    hordeBotsByRange[rangeIndex].push_back(info);
+                }
             }
         }
-        else if (team == Team::HORDE)
-        {
-            totalHordeBots++;
-            int rangeIndex = GetLevelRangeIndex(player->GetLevel());
-            if (rangeIndex >= 0)
-            {
-                hordeActualCounts[rangeIndex]++;
-                hordeBotsByRange[rangeIndex].push_back(player);
-            }
-            else if (_BotDistDebugMode)
-            {
-                TC_LOG_DEBUG("server.loading", "[BotLevelBrackets] Horde bot '%s' with level %u does not fall into any defined range.",
-                    player->GetName().c_str(), player->GetLevel());
-            }
-        }
-    }
+    } // Read lock released here.
+
+    // Phase 2: Log and adjust WITHOUT holding the read lock.
+    // This allows player login/logout to proceed during database I/O.
 
     // Process Alliance bots.
     if (totalAllianceBots > 0)
@@ -169,22 +161,19 @@ void RandomBotBacketManager::Update(uint32 diff)
         for (int i = 0; i < NUM_RANGES; ++i)
         {
             allianceDesiredCounts[i] = static_cast<int>(round((_AllianceLevelRanges[i].desiredPercent / 100.0) * totalAllianceBots));
-            if (_BotDistDebugMode)
-            {
-                TC_LOG_INFO("server.loading", "[BotLevelBrackets] Alliance Range %u (%u-%u): Desired = %u, Actual = %u.",
-                         i + 1, _AllianceLevelRanges[i].lower, _AllianceLevelRanges[i].upper,
-                         allianceDesiredCounts[i], allianceActualCounts[i]);
-            }
+            TC_LOG_DEBUG("playerbots", "[BotLevelBrackets] Alliance Range %u (%u-%u): Desired = %u, Actual = %u.",
+                     i + 1, _AllianceLevelRanges[i].lower, _AllianceLevelRanges[i].upper,
+                     allianceDesiredCounts[i], allianceActualCounts[i]);
         }
         // Adjust overpopulated ranges.
         for (int i = 0; i < NUM_RANGES; ++i)
         {
             while (allianceActualCounts[i] > allianceDesiredCounts[i] && !allianceBotsByRange[i].empty())
             {
-                Player* bot = allianceBotsByRange[i].back();
+                BotBracketInfo bot = allianceBotsByRange[i].back();
                 allianceBotsByRange[i].pop_back();
                 int targetRange = -1;
-                if (bot->GetClass() == CLASS_DEATH_KNIGHT)
+                if (bot.playerClass == CLASS_DEATH_KNIGHT)
                 {
                     for (int j = 0; j < NUM_RANGES; ++j)
                     {
@@ -224,21 +213,18 @@ void RandomBotBacketManager::Update(uint32 diff)
         for (int i = 0; i < NUM_RANGES; ++i)
         {
             hordeDesiredCounts[i] = static_cast<int>(round((_HordeLevelRanges[i].desiredPercent / 100.0) * totalHordeBots));
-            if (_BotDistDebugMode)
-            {
-                TC_LOG_INFO("server.loading", "[BotLevelBrackets] Horde Range %u (%u-%u): Desired = %u, Actual = %u.",
-                         i + 1, _HordeLevelRanges[i].lower, _HordeLevelRanges[i].upper,
-                         hordeDesiredCounts[i], hordeActualCounts[i]);
-            }
+            TC_LOG_DEBUG("playerbots", "[BotLevelBrackets] Horde Range %u (%u-%u): Desired = %u, Actual = %u.",
+                     i + 1, _HordeLevelRanges[i].lower, _HordeLevelRanges[i].upper,
+                     hordeDesiredCounts[i], hordeActualCounts[i]);
         }
         for (int i = 0; i < NUM_RANGES; ++i)
         {
             while (hordeActualCounts[i] > hordeDesiredCounts[i] && !hordeBotsByRange[i].empty())
             {
-                Player* bot = hordeBotsByRange[i].back();
+                BotBracketInfo bot = hordeBotsByRange[i].back();
                 hordeBotsByRange[i].pop_back();
                 int targetRange = -1;
-                if (bot->GetClass() == CLASS_DEATH_KNIGHT)
+                if (bot.playerClass == CLASS_DEATH_KNIGHT)
                 {
                     for (int j = 0; j < NUM_RANGES; ++j)
                     {
@@ -271,9 +257,6 @@ void RandomBotBacketManager::Update(uint32 diff)
         }
     }
 
-    if (_BotDistDebugMode)
-    {
-        TC_LOG_INFO("server.loading", "[BotLevelBrackets] Distribution adjustment complete. Alliance bots: %u, Horde bots: %u.",
-                 totalAllianceBots, totalHordeBots);
-    }
+    TC_LOG_DEBUG("playerbots", "[BotLevelBrackets] Distribution adjustment complete. Alliance bots: %u, Horde bots: %u.",
+             totalAllianceBots, totalHordeBots);
 }

@@ -6,8 +6,9 @@
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
 #include "WorldPacket.h"
+#include "WorldSession.h"
 
-AcceptInvitationAction::AcceptInvitationAction(PlayerbotAI* botAI, const std::string name)
+AcceptInvitationAction::AcceptInvitationAction(PlayerbotAI* botAI, std::string const name)
     : Action(botAI, name)
 {
 }
@@ -46,36 +47,40 @@ bool AcceptInvitationAction::Execute(Event /*event*/)
 
     TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s accepting invite", bot->GetName().c_str());
 
-    // Accept the invite (synchronous, bot joins the group).
-    WorldPacket p;
-    uint8 unk = 0;
-    p << unk;
-    p.WriteBit(true);
-    p.WriteBit(true);
-    p.FlushBits();
-    bot->GetSession()->HandleGroupInviteResponseOpcode(p);
-
-    // After accepting, set the group leader as master. Look up the leader
-    // directly from the group rather than via GetGroupMaster() which has
-    // fallback logic that may return the old master.
-    if (sRandomPlayerbotMgr->IsRandomBot(bot))
+    // NOTE: We MUST NOT invoke the opcode handler directly on this thread.
+    // This code runs inside a Map::Update worker thread where the thread_local
+    // `CurrentMap` points to this bot's map.  Directly calling
+    // HandleGroupInviteResponseOpcode triggers group->BroadcastGroupUpdate()
+    // which iterates every group member and calls ForceValuesUpdateAtIndex ->
+    // AddToUpdate.  For members on a DIFFERENT map, AddToUpdate either
+    //
+    //  1. logs "invalid map..." and returns (if we leave CurrentMap intact), OR
+    //  2. if we try to hack around the check by temporarily clearing CurrentMap,
+    //     we end up calling m_currMap->AddUpdateObject from the WRONG map's
+    //     worker thread.  That is a race on Map::m_objectsToUpdate (no lock)
+    //     which corrupts the vector, produces malformed SMSG_UPDATE_OBJECT
+    //     packets and freezes the receiving client.
+    //
+    // The correct and architecture-compliant path is to enqueue the incoming
+    // packet on the bot's WorldSession.  The world thread (single consumer of
+    // _recvQueue) will run the handler with CurrentMap==nullptr which keeps
+    // the original cross-map guard semantics in AddToUpdate perfectly safe.
+    //
+    // Because the packet is processed asynchronously we cannot observe the
+    // bot's new group / new master on this tick.  PlayerbotAI's UpdateMaster
+    // loop (PlayerbotAI.cpp ~line 970-1047) already contains the logic to
+    // promote the first real player in the group (or the leader) to master,
+    // reset strategies and switch to "+follow" once the bot has actually
+    // joined the group, so no additional bookkeeping is required here.
     {
-        Player* groupMaster = nullptr;
-        if (Group* group = bot->GetGroup())
-            groupMaster = ObjectAccessor::FindPlayer(group->GetLeaderGUID());
-
-        if (groupMaster)
-        {
-            botAI->SetMaster(groupMaster);
-            TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s now has master %s", bot->GetName().c_str(), groupMaster->GetName().c_str());
-        }
-        else
-            TC_LOG_INFO("playerbots", "AcceptInvitation: bot %s COULD NOT SET MASTER - group leader not found", bot->GetName().c_str());
+        WorldPacket* p = new WorldPacket(CMSG_GROUP_INVITE_RESPONSE, 1 + 2);
+        uint8 unk = 0;
+        *p << unk;
+        p->WriteBit(true);
+        p->WriteBit(true);
+        p->FlushBits();
+        bot->GetSession()->QueuePacket(p);
     }
-
-    botAI->ResetStrategies();
-    botAI->ChangeStrategy("+follow,-lfg,-bg", BOT_STATE_NON_COMBAT);
-    botAI->Reset();
 
     return true;
 }

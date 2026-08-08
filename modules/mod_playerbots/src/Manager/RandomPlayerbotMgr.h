@@ -101,6 +101,7 @@ public:
     bool TryWhisperChat(uint32 cooldownMs);
 
     void TagForRandomize(Player* bot, uint32 level, uint32 delay = 0);
+    void TagForRandomize(uint32 guid, uint32 level, uint32 delay = 0);
     void RandomizeFirst(Player* bot);
     void Randomize(Player* bot);
     
