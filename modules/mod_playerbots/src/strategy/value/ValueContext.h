@@ -65,6 +65,7 @@ public:
         creators["last area trigger"] = &ValueContext::last_movement;
         creators["combat"] = &ValueContext::combat;
         creators["bag space"] = &ValueContext::bag_space;
+        creators["item count"] = &ValueContext::item_count;
         creators["durability"] = &ValueContext::durability;
         creators["speed"] = &ValueContext::speed;
         creators["death count"] = &ValueContext::death_count;
@@ -180,6 +181,7 @@ private:
     static UntypedValue* has_mana(PlayerbotAI* botAI) { return new HasManaValue(botAI); }   
     static UntypedValue* combat(PlayerbotAI* botAI) { return new IsInCombatValue(botAI); }
     static UntypedValue* bag_space(PlayerbotAI* botAI) { return new BagSpaceValue(botAI); }
+    static UntypedValue* item_count(PlayerbotAI* botAI) { return new ItemCountValue(botAI); }
     static UntypedValue* durability(PlayerbotAI* botAI) { return new DurabilityValue(botAI); }
     static UntypedValue* speed(PlayerbotAI* botAI) { return new SpeedValue(botAI); }
     static UntypedValue* death_count(PlayerbotAI* botAI) { return new DeathCountValue(botAI); }

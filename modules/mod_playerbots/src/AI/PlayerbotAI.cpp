@@ -1565,6 +1565,7 @@ bool PlayerbotAI::SayToRandomChannel()
     if (text.empty())
         return false;
 
+    sPlayerbotTextMgr->ReplaceChatPlaceholders(text, bot);
     uint32 lang = bot->GetTeamId() == TeamId::TEAM_ALLIANCE ? LANG_COMMON : LANG_ORCISH;
     target->Say(bot->GetGUID(), text, lang);
     return true;
@@ -1689,6 +1690,7 @@ bool PlayerbotAI::Talk(const std::string& name)
     if (text.empty())
         return false;
 
+    sPlayerbotTextMgr->ReplaceChatPlaceholders(text, bot);
     Say(text);
     return true;
 }

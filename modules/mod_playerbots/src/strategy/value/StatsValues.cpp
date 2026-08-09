@@ -208,6 +208,35 @@ uint8 BagSpaceValue::Calculate()
     return (static_cast<float>(totalused) / total) * 100;
 }
 
+uint32 ItemCountValue::Calculate()
+{
+    if (!bot || !bot->IsInWorld())
+        return 0;
+
+    std::string const itemName = qualifier;
+    uint32 count = 0;
+
+    auto addItem = [&](Item* item)
+    {
+        if (!item)
+            return;
+        ItemTemplate const* proto = item->GetTemplate();
+        if (proto && proto->Name1 == itemName)
+            count += item->GetCount();
+    };
+
+    for (uint8 i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+        addItem(bot->GetItemByPos(INVENTORY_SLOT_BAG_0, i));
+    for (uint8 i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+        addItem(bot->GetItemByPos(INVENTORY_SLOT_BAG_0, i));
+    for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END; ++bag)
+        if (Bag* pBag = bot->GetBagByPos(bag))
+            for (uint32 i = 0; i < pBag->GetBagSize(); ++i)
+                addItem(pBag->GetItemByPos(i));
+
+    return count;
+}
+
 uint8 DurabilityValue::Calculate()
 {
     uint32 totalMax = 0, total = 0;

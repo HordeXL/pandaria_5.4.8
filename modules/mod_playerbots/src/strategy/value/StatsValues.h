@@ -107,6 +107,14 @@ public:
     uint8 Calculate() override;
 };
 
+class ItemCountValue : public Uint32CalculatedValue, public Qualified
+{
+public:
+    ItemCountValue(PlayerbotAI* botAI, std::string const name = "item count") : Uint32CalculatedValue(botAI, name) {}
+
+    uint32 Calculate() override;
+};
+
 class DurabilityValue : public Uint8CalculatedValue
 {
 public:
