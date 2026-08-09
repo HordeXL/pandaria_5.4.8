@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+class Player;
+
 struct BotTextEntry
 {
     uint32 id;
@@ -31,6 +33,12 @@ public:
     std::string GetRandomText(const std::string& name);
 
     bool HasText(const std::string& name) const { return _texts.count(name) > 0; }
+
+    // Replaces chat placeholders (%item_link, %quest_link, %zone_name, %my_class,
+    // %my_race, %my_level, %victim_name, %instance_name, %my_role, %other_name,
+    // %category, and legacy printf-style %s) with real values. zhCN names are
+    // taken from locale data when available, otherwise English fallback is used.
+    static void ReplaceChatPlaceholders(std::string& text, Player* bot, std::string const& targetName = "");
 
 private:
     mutable std::mutex _lock;

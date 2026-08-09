@@ -904,6 +904,7 @@ void RandomPlayerbotMgr::OnChannelChat(Player* speaker, Channel* channel, std::s
     if (text.empty())
         return;
 
+    sPlayerbotTextMgr->ReplaceChatPlaceholders(text, bot);
     channel->Say(bot->GetGUID(), text, lang);
 }
 
@@ -926,6 +927,7 @@ void RandomPlayerbotMgr::OnWhisperToBot(Player* speaker, Player* receiver, std::
     if (text.empty())
         return;
 
+    sPlayerbotTextMgr->ReplaceChatPlaceholders(text, receiver, speaker->GetName());
     receiver->Whisper(text, lang, speaker->GetGUID());
 }
 
