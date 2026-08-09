@@ -2364,23 +2364,14 @@ void WorldObject::SendPlaySound(uint32 Sound, bool OnlySelf)
 void Object::ForceValuesUpdateAtIndex(uint32 i)
 {
     _changesMask.SetBit(i);
-    // Only add to the map's update queue from a Map worker thread.
-    // When CurrentMap is nullptr (World thread / session thread),
-    // inserting into m_updatable races with the Map thread's
-    // iteration + clear in SendObjectUpdates, corrupting the
-    // std::set and producing malformed SMSG_UPDATE_OBJECT packets
-    // that freeze the client.
-    // The _changesMask bit remains set, so the value WILL be sent
-    // on the next Map update tick when the object is naturally
-    // added to the update queue.
-    if (m_inWorld && !m_objectUpdated && CurrentMap != nullptr)
+    if (m_inWorld && !m_objectUpdated)
         AddToUpdate();
 }
 
 void Object::ForceDynamicValuesUpdateTabAtIndex(uint32 tab, uint16 index)
 {
     m_dynamicChange[tab] = true;
-    if (m_inWorld && !m_objectUpdated && CurrentMap != nullptr)
+    if (m_inWorld && !m_objectUpdated)
         AddToUpdate();
 }
 
@@ -3839,14 +3830,14 @@ void WorldObject::SetCustomVisibilityDistance(float distance, bool zoneOnly)
     if (m_hasCustomVisibility)
     {
         if (switchedZoneOnly)
-            map->RemoveCustomVisibilityObjectFromAll(this);
+            map->RemoveCustomVisibilityObject(this, GetCustomVisibilityZoneID());
 
         SetCustomVisibilityZoneID(zoneOnly ? GetZoneId() : 0);
 
         map->AddCustomVisibilityObject(this, GetCustomVisibilityZoneID());
     }
     else
-        map->RemoveCustomVisibilityObjectFromAll(this);
+        map->RemoveCustomVisibilityObject(this, GetCustomVisibilityZoneID());
 
     UpdateObjectVisibility();
 }

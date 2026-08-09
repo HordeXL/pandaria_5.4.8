@@ -45,41 +45,26 @@ inline void Trinity::VisibleNotifier::Visit(GridRefManager<T> &m)
 // `object_visibility` table: the rows loaded, the objects registered, and then
 // nothing ever looked at them. CanSeeOrDetect does the range check against
 // WorldObject::GetVisibilityRange, which already honours the custom distance.
-inline void Trinity::VisibleNotifier::VisitSet(std::unordered_set<WorldObject*> const& objects)
+inline void Trinity::VisibleNotifier::VisitSet(std::unordered_set<WorldObject*> const& /*objects*/)
 {
-    for (std::unordered_set<WorldObject*>::const_iterator itr = objects.begin(); itr != objects.end(); ++itr)
-    {
-        WorldObject* object = *itr;
-
-        // Defensive: skip null or already-removed-from-world pointers.
-        // The set is now copied before iteration (GetCustomVisibilityObjects
-        // returns by value), so iterator invalidation is no longer the issue,
-        // but a pointer can still be stale if RemoveFromMap hasn't run yet.
-        if (!object || !object->IsInWorld())
-            continue;
-
-        // Visit() would have handled it already, and doing it twice would build
-        // a second create block for the same object.
-        if (!vis_guids.erase(object->GetGUID()))
-            if (i_player.HaveAtClient(object))
-                continue;
-
-        switch (object->GetTypeId())
-        {
-            case TYPEID_UNIT:
-                i_player.UpdateVisibilityOf(object->ToCreature(), i_data, i_visibleNow);
-                break;
-            case TYPEID_GAMEOBJECT:
-                i_player.UpdateVisibilityOf(object->ToGameObject(), i_data, i_visibleNow);
-                break;
-            case TYPEID_DYNAMICOBJECT:
-                i_player.UpdateVisibilityOf(object->ToDynObject(), i_data, i_visibleNow);
-                break;
-            default:
-                break;
-        }
-    }
+    // DISABLED (temporary, crash stopgap).
+    //
+    // The custom-visibility registry (object_visibility table) stores raw
+    // WorldObject* pointers. A Map-updater thread can destroy one of those
+    // objects while this set is being iterated (copy-then-iterate races with
+    // RemoveCustomVisibilityObjectFromAll + delete on another thread). Reading
+    // the stale pointer is undefined behaviour and crashes here with
+    // ACCESS_VIOLATION / use-after-free (RAX contained freed-string bytes).
+    // A null/IsInWorld check cannot fix that: dereferencing a dangling
+    // pointer to run IsInWorld() is itself UB.
+    //
+    // The registry itself is still maintained (Add/Remove keep it consistent),
+    // but nothing is visited, matching the upstream behaviour where this body
+    // was empty. Re-enable only after switching the registry to store GUIDs
+    // instead of raw pointers (then resolve via ObjectAccessor, which checks
+    // IsInWorld internally).
 }
+
 
 // SEARCHERS & LIST SEARCHERS & WORKERS
 

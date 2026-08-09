@@ -77,19 +77,10 @@ void PacketHandlingHelper::AddHandler(uint16 opcode, std::string const handler)
 
 void PacketHandlingHelper::Handle(ExternalEventHelper& helper)
 {
-    // Swap the queue under the lock, then process outside the lock.
-    // This avoids holding the mutex while HandlePacket runs (which may
-    // re-enter AddPacket from the same thread).
-    std::stack<WorldPacket> localQueue;
+    while (!_queue.empty())
     {
-        std::lock_guard<std::mutex> lock(_queueMutex);
-        localQueue.swap(_queue);
-    }
-
-    while (!localQueue.empty())
-    {
-        helper.HandlePacket(_handlers, localQueue.top());
-        localQueue.pop();
+        helper.HandlePacket(_handlers, _queue.top());
+        _queue.pop();
     }
 }
 
@@ -97,11 +88,11 @@ void PacketHandlingHelper::AddPacket(WorldPacket const& packet)
 {
     if (packet.empty())
         return;
+    // assert(handlers);
+    // assert(packet);
+    // assert(packet.GetOpcode());
     if (_handlers.find(packet.GetOpcode()) != _handlers.end())
-    {
-        std::lock_guard<std::mutex> lock(_queueMutex);
         _queue.push(WorldPacket(packet));
-    }
 }
 
 PlayerbotAI::PlayerbotAI()
@@ -254,45 +245,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     // Handle pending reequip request (executed on Map thread to avoid cross-thread data races)
     if (IsPendingReequip())
     {
-        // Stagger bulk reequips: wait for random delay to expire so that
-        // not all bots reequip in the same tick (prevents client freeze from
-        // SMSG_UPDATE_OBJECT packet storms).
-        uint32 delay = _reequipDelay.load(std::memory_order_relaxed);
-        if (delay > 0)
-        {
-            if (delay > elapsed)
-            {
-                _reequipDelay.store(delay - elapsed, std::memory_order_relaxed);
-                return;
-            }
-            _reequipDelay.store(0, std::memory_order_relaxed);
-        }
         SetPendingReequip(false);
         DoReequip();
-        return; // Skip normal AI update this tick
-    }
-
-    // Handle unified pending operations (addclass, setspec, randomize, refresh,
-    // teleport, revive).  These are requested from the World thread but executed
-    // here on the Map thread to avoid cross-thread Player object access.
-    if (GetPendingOp() != BOT_OP_NONE)
-    {
-        // Heavy operations (Randomize, RandomizeFirst, AddClass, SetSpec,
-        // RefreshTeleport) generate large SMSG_UPDATE_OBJECT packets.
-        // Stagger them with a random delay so multiple bots on the same map
-        // don't all randomize in the same Map::Update tick, which would
-        // flood the client with a massive update packet and freeze it.
-        uint32 opDelay = _pendingOpDelay.load(std::memory_order_relaxed);
-        if (opDelay > 0)
-        {
-            if (opDelay > elapsed)
-            {
-                _pendingOpDelay.store(opDelay - elapsed, std::memory_order_relaxed);
-                return; // Wait for delay to expire before executing
-            }
-            _pendingOpDelay.store(0, std::memory_order_relaxed);
-        }
-        ProcessPendingOp();
         return; // Skip normal AI update this tick
     }
 
@@ -1373,8 +1327,6 @@ bool PlayerbotAI::IsInRealGuild()
     // The bot is considered in a "real guild" when at least one online player
     // (not a bot) shares its guild. Offline members don't count: activity is
     // only meaningful when a real player could actually be watching.
-    // Hold HashMapHolder read lock to prevent iterator invalidation during traversal.
-    TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
     for (auto const& itr : ObjectAccessor::GetPlayers())
     {
         Player* player = itr.second;
@@ -3335,151 +3287,4 @@ void PlayerbotAI::DoReequip()
     bot->SaveToDB(false);
 
     TC_LOG_INFO("playerbots", "Bot %s reequipped on map thread.", bot->GetName().c_str());
-}
-
-void PlayerbotAI::RequestOp(uint8 op, uint32 param, ObjectGuid masterGuid)
-{
-    _pendingOpParam.store(param, std::memory_order_relaxed);
-    _pendingOpMasterGuid.store(masterGuid.GetRawValue(), std::memory_order_relaxed);
-
-    // Heavy operations generate large SMSG_UPDATE_OBJECT packets (full equipment
-    // rebuild, level change, talent reset, etc.).  Assign a random delay so
-    // multiple bots whose timers expire in the same World::Update tick don't
-    // all execute their heavy op in the same Map::Update tick.  This prevents
-    // packet storms that freeze the client.
-    //
-    // Delay ranges (ms):
-    //   RANDOMIZE / RANDOMIZE_FIRST / ADDCLASS: 0-3000  (heaviest: full gear rebuild)
-    //   SETSPEC / REFRESH_TELEPORT:             0-2000  (heavy: talent reset + re-equip)
-    //   REFRESH:                                0-1000  (moderate: repair + minor equip)
-    //   Others (TELEPORT, REVIVE, etc.):        0       (light: no delay needed)
-    uint32 delay = 0;
-    switch (op)
-    {
-        case BOT_OP_RANDOMIZE:
-        case BOT_OP_RANDOMIZE_FIRST:
-        case BOT_OP_ADDCLASS:
-            delay = urand(0, 3000);
-            break;
-        case BOT_OP_SETSPEC:
-        case BOT_OP_REFRESH_TELEPORT:
-            delay = urand(0, 2000);
-            break;
-        case BOT_OP_REFRESH:
-            delay = urand(0, 1000);
-            break;
-        default:
-            break;
-    }
-    _pendingOpDelay.store(delay, std::memory_order_relaxed);
-
-    _pendingOp.store(op, std::memory_order_release);
-}
-
-void PlayerbotAI::ProcessPendingOp()
-{
-    // Atomically claim the op so a concurrent World-thread RequestOp doesn't get lost.
-    uint8 op = _pendingOp.exchange(BOT_OP_NONE, std::memory_order_acq_rel);
-    if (op == BOT_OP_NONE)
-        return;
-
-    // This method runs on the Map thread (via Player::Update -> UpdateAI),
-    // so all Player object access is thread-safe here.
-    if (!bot || !bot->IsInWorld() || !bot->GetSession() || bot->GetSession()->isLogingOut())
-        return;
-
-    uint32 param  = _pendingOpParam.load(std::memory_order_relaxed);
-    uint64 rawGuid = _pendingOpMasterGuid.load(std::memory_order_relaxed);
-
-    switch (op)
-    {
-        case BOT_OP_ADDCLASS:
-        {
-            TC_LOG_INFO("playerbots", "Bot %s addclass on map thread.", bot->GetName().c_str());
-            sRandomPlayerbotMgr->SetValue(bot, "level", param);
-            sRandomPlayerbotMgr->Randomize(bot);
-            BotFactory factory(bot, bot->GetLevel());
-            factory.InitTalentsTree(true);
-            factory.InitEquipment(true);
-
-            // Teleport the freshly configured bot to its master.
-            ObjectGuid masterGuid = ObjectGuid(rawGuid);
-            if (masterGuid)
-            {
-                Player* masterPlayer = ObjectAccessor::FindPlayer(masterGuid);
-                if (masterPlayer && masterPlayer->IsInWorld() && !masterPlayer->IsBeingTeleported() && !bot->IsBeingTeleported())
-                {
-                    bot->TeleportTo(masterPlayer->GetMapId(), masterPlayer->GetPositionX(),
-                                    masterPlayer->GetPositionY(), masterPlayer->GetPositionZ(),
-                                    masterPlayer->GetOrientation());
-                }
-            }
-            break;
-        }
-        case BOT_OP_SETSPEC:
-        {
-            TC_LOG_INFO("playerbots", "Bot %s setspec(%u) on map thread.", bot->GetName().c_str(), param);
-            if (bot->IsInCombat())
-                break;
-
-            WorldPacket p(CMSG_SET_PRIMARY_TALENT_TREE);
-            p << uint32(param);
-            bot->ResetTalents(true, true, true);
-            bot->GetSession()->HandeSetTalentSpecialization(p);
-            bot->ActivateSpec(0);
-            BotFactory factory(bot, bot->GetLevel());
-            factory.InitTalentsTree(false);
-            factory.InitEquipment(true);
-            ResetStrategies();
-            Reset(true);
-            break;
-        }
-        case BOT_OP_RANDOMIZE:
-        {
-            TC_LOG_INFO("playerbots", "Bot %s randomize on map thread.", bot->GetName().c_str());
-            sRandomPlayerbotMgr->Randomize(bot);
-            break;
-        }
-        case BOT_OP_RANDOMIZE_FIRST:
-        {
-            TC_LOG_INFO("playerbots", "Bot %s randomize-first on map thread.", bot->GetName().c_str());
-            sRandomPlayerbotMgr->RandomizeFirst(bot);
-            break;
-        }
-        case BOT_OP_REFRESH:
-        {
-            TC_LOG_INFO("playerbots", "Bot %s refresh on map thread.", bot->GetName().c_str());
-            sRandomPlayerbotMgr->Refresh(bot);
-            break;
-        }
-        case BOT_OP_TELEPORT:
-        {
-            TC_LOG_INFO("playerbots", "Bot %s teleport-for-level on map thread.", bot->GetName().c_str());
-            sRandomPlayerbotMgr->RandomTeleportForLevel(bot);
-            break;
-        }
-        case BOT_OP_REVIVE:
-        {
-            TC_LOG_INFO("playerbots", "Bot %s revive on map thread.", bot->GetName().c_str());
-            sRandomPlayerbotMgr->Revive(bot);
-            break;
-        }
-        case BOT_OP_REFRESH_TELEPORT:
-        {
-            TC_LOG_INFO("playerbots", "Bot %s refresh+teleport on map thread.", bot->GetName().c_str());
-            sRandomPlayerbotMgr->Refresh(bot);
-            sRandomPlayerbotMgr->RandomTeleportForLevel(bot);
-            break;
-        }
-        case BOT_OP_TELEPORT_ACK:
-        {
-            // Deferred from UpdateSessions (World thread) to here (Map thread)
-            // because HandleTeleportAck calls AddPlayerToMap, HandleMoveTeleportAck,
-            // and HandleMoveWorldportAckOpcode which all modify Map/Player state.
-            HandleTeleportAck();
-            break;
-        }
-        default:
-            break;
-    }
 }

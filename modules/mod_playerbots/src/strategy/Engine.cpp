@@ -116,33 +116,8 @@ void Engine::Reset()
     multipliers.clear();
 }
 
-Engine::TickScope::TickScope(Engine* engine) : engine(engine)
-{
-    ++engine->tickDepth;
-}
-
-Engine::TickScope::~TickScope()
-{
-    if (--engine->tickDepth == 0 && engine->initPending)
-    {
-        engine->initPending = false;
-        engine->Init();
-    }
-}
-
 void Engine::Init()
 {
-    // Re-entrancy guard: if Init() is called from within a DoNextAction or
-    // ExecuteAction tick (e.g. an Action::Execute triggered ChangeStrategy),
-    // defer the Reset()/rebuild until the outermost tick scope exits.
-    // Calling Reset() now would delete the triggers/multipliers/queue
-    // containers that the caller is currently iterating -> use-after-free.
-    if (tickDepth > 0)
-    {
-        initPending = true;
-        return;
-    }
-
     Reset();
 
     for (std::map<std::string, Strategy*>::iterator i = strategies.begin(); i != strategies.end(); i++)
@@ -166,8 +141,6 @@ void Engine::Init()
 
 bool Engine::DoNextAction(Unit* unit, uint32 depth, bool minimal)
 {
-    TickScope tickScope(this);
-
     LogAction("--- AI Tick ---");
 
     //if (sPlayerbotAIConfig->logValuesPerTick)
@@ -336,8 +309,6 @@ bool Engine::MultiplyAndPush(NextAction** actions, float forceRelevance, bool sk
 
 ActionResult Engine::ExecuteAction(std::string const name, Event event, std::string const qualifier)
 {
-    TickScope tickScope(this);
-
     bool result = false;
 
     ActionNode* actionNode = CreateActionNode(name);

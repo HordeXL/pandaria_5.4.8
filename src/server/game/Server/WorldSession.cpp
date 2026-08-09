@@ -321,15 +321,9 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     /// Update Timeout timer.
     UpdateTimeOutTime(diff);
     std::unordered_map<uint16, OpcodeInfo> pktHandle;
-    // Services timers - only process from the World thread (CurrentMap == nullptr).
-    // When called from Map::Update() worker threads, these global singleton
-    // updates would race across maps and create items for players on the
-    // wrong map, corrupting SMSG_UPDATE_OBJECT packets and freezing clients.
-    if (CurrentMap == nullptr)
-    {
-        GetBoost()->Update(diff);
-        sBattlePayMgr->Update(diff);
-    }
+    // Services timers
+    GetBoost()->Update(diff);
+    sBattlePayMgr->Update(diff);
 
     ///- Before we process anything:
     /// If necessary, kick the player from the character select screen
