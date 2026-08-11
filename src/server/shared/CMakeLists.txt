@@ -101,6 +101,8 @@ target_link_libraries(shared
   ${ACE_LIBRARY}
 )
 
+target_compile_definitions(shared PRIVATE ACE_AS_STATIC_LIBS)
+
 # Generate precompiled header
 if (USE_COREPCH)
   add_cxx_pch(shared ${shared_STAT_PCH_HDR} ${shared_STAT_PCH_SRC})

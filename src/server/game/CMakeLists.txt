@@ -311,6 +311,8 @@ add_library(game STATIC
 
 add_dependencies(game revision.h)
 
+target_compile_definitions(game PRIVATE ACE_AS_STATIC_LIBS)
+
 if(ELUNA)
   target_link_libraries(game lua)
   target_compile_definitions(game PRIVATE ELUNA=1)

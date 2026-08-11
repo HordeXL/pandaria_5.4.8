@@ -203,6 +203,7 @@ if( USE_SCRIPTPCH AND MSVC )
 endif()
 
 add_library(scripts STATIC ${scripts_STAT_SRCS} )
+target_compile_definitions(scripts PRIVATE ACE_AS_STATIC_LIBS)
 add_dependencies(scripts revision.h)
 # Generate precompiled header
 if (USE_SCRIPTPCH)
