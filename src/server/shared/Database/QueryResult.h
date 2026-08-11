@@ -25,7 +25,7 @@
 #ifdef _WIN32
   #include <winsock2.h>
 #endif
-#include <mysql.h>
+#include "MySQLCompat.h"
 
 // Compatibility with MySQL 8.0+ (my_bool removed in MySQL 8.0)
 #ifndef my_bool
