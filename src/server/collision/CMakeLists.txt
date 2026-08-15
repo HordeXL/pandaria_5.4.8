@@ -87,6 +87,7 @@ add_library(collision STATIC
   ${collision_STAT_SRCS}
   ${collision_STAT_PCH_SRC}
 )
+target_compile_definitions(collision PRIVATE ACE_AS_STATIC_LIBS)
 
 target_link_libraries(collision
   shared

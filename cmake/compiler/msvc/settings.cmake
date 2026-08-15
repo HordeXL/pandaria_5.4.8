@@ -42,7 +42,7 @@ else()
 endif()
 
 # Set build-directive (used in core to tell which buildtype we used)
-add_definitions(-D_BUILD_DIRECTIVE=\\"$(ConfigurationName)\\")
+add_definitions(-D_BUILD_DIRECTIVE=\"$(ConfigurationName)\")
 
 # Treat source and execution character sets as UTF-8 (fixes garbled Chinese text)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
