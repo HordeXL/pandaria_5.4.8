@@ -26,7 +26,7 @@
 #endif
 
 #include <boost/dll/runtime_symbol_info.hpp>
-#include <ace/Version.h>
+#include <boost/version.hpp>
 
 #include "Common.h"
 #include "Database/DatabaseEnv.h"
@@ -62,7 +62,6 @@ int m_ServiceStatus = -1;
 WorldDatabaseWorkerPool WorldDatabase;                      ///< Accessor to the world database
 CharacterDatabaseWorkerPool CharacterDatabase;              ///< Accessor to the character database
 LoginDatabaseWorkerPool LoginDatabase;                      ///< Accessor to the realm/login database
-PlayerbotsDatabaseWorkerPool PlayerbotsDatabase;            ///< Accessor to the playerbots database
 
 RealmNameMap realmNameStore;
 uint32 realmID;                                             ///< Id of the realm
@@ -146,8 +145,8 @@ extern int main(int argc, char** argv)
 
     TC_LOG_INFO("server.worldserver", "Using configuration file %s.", cfg_file);
 
-    TC_LOG_INFO("server.worldserver", "Using SSL version: %s (library: %s)", OPENSSL_VERSION_TEXT, SSLeay_version(SSLEAY_VERSION));
-    TC_LOG_INFO("server.worldserver", "Using ACE version: %s", ACE_VERSION);
+    TC_LOG_INFO("server.worldserver", "Using SSL version: %s (library: %s)", OPENSSL_VERSION_TEXT, OpenSSL_version(OPENSSL_VERSION));
+    TC_LOG_INFO("server.worldserver", "Using Boost version: %i.%i.%i", BOOST_VERSION / 100000, BOOST_VERSION / 100 % 1000, BOOST_VERSION % 100);
 
     ///- and run the 'Master'
     /// @todo Why do we need this 'Master'? Can't all of this be in the Main as for Realmd?

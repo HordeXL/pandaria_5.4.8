@@ -19,11 +19,10 @@
     \ingroup Trinityd
 */
 
-#include <ace/Sig_Handler.h>
+#include <csignal>
 
 #include "Common.h"
 #include "SystemConfig.h"
-#include "SignalHandler.h"
 #include "World.h"
 #include "WorldRunnable.h"
 #include "WorldSocket.h"
@@ -37,7 +36,9 @@
 #if defined(OPENSSL_VERSION_MAJOR) && (OPENSSL_VERSION_MAJOR >= 3)
 #include <openssl/provider.h>
 #endif
+#include <boost/asio/io_context.hpp>
 #include <boost/dll/runtime_symbol_info.hpp>
+#include <thread>
 
 #include "CliRunnable.h"
 #include "Log.h"
@@ -66,51 +67,52 @@ extern int m_ServiceStatus;
 #define PROCESS_HIGH_PRIORITY -15 // [-20, 19], default is 0
 #endif
 
-/// Handle worldservers's termination signals
-class WorldServerSignalHandler : public Trinity::SignalHandler
+/// Handle worldserver's termination signals
+///
+/// std::signal takes a plain function pointer, so this replaces the
+/// ACE_Event_Handler subclass ACE_Sig_Handler needed. It runs in signal
+/// context and only reaches World::StopNow, which stores to an atomic flag and
+/// a byte - no allocation, no locks, no logging.
+extern "C" void WorldServerSignalHandler(int sigNum)
 {
-    public:
-        virtual void HandleSignal(int sigNum)
-        {
-            switch (sigNum)
-            {
-                case SIGINT:
-                    World::StopNow(RESTART_EXIT_CODE);
-                    break;
-                case SIGTERM:
+    switch (sigNum)
+    {
+        case SIGINT:
+            World::StopNow(RESTART_EXIT_CODE);
+            break;
+        case SIGTERM:
 #ifdef _WIN32
-                case SIGBREAK:
-                    if (m_ServiceStatus != 1)
+        case SIGBREAK:
+            if (m_ServiceStatus != 1)
 #endif
-                    World::StopNow(SHUTDOWN_EXIT_CODE);
-                    break;
-            }
+            World::StopNow(SHUTDOWN_EXIT_CODE);
+            break;
+    }
 
-            // Give the world thread 2 s to finish the current Update and execute
-            // KickAll + UpdateSessions (saves real players), then force-exit.
-            // This makes Ctrl+C shutdown instant regardless of bot count / uptime.
+    // Give the world thread 2 s to finish the current Update and execute
+    // KickAll + UpdateSessions (saves real players), then force-exit.
+    // This makes Ctrl+C shutdown instant regardless of bot count / uptime.
 #ifdef _WIN32
-            Sleep(2000);
+    Sleep(2000);
 #else
-            sleep(2);
+    sleep(2);
 #endif
 
-            // Update realm status and clear online accounts so the next start
-            // is clean (the world thread may not have reached Master.cpp's
-            // normal cleanup path).
-            uint32 realmID = sConfigMgr->GetIntDefault("RealmID", 0);
-            LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag | %u WHERE id = '%d'", REALM_FLAG_OFFLINE, realmID);
-            LoginDatabase.DirectPExecute("UPDATE account SET online = 0 WHERE online > 0 AND id IN (SELECT acctid FROM realmcharacters WHERE realmid = %d)", realmID);
+    // Update realm status and clear online accounts so the next start
+    // is clean (the world thread may not have reached Master.cpp's
+    // normal cleanup path).
+    uint32 realmID = sConfigMgr->GetIntDefault("RealmID", 0);
+    LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag | %u WHERE id = '%d'", REALM_FLAG_OFFLINE, realmID);
+    LoginDatabase.DirectPExecute("UPDATE account SET online = 0 WHERE online > 0 AND id IN (SELECT acctid FROM realmcharacters WHERE realmid = %d)", realmID);
 
 #ifdef _WIN32
-            ExitProcess(0);
+    ExitProcess(0);
 #else
-            _exit(0);
+    _exit(0);
 #endif
-        }
-};
+}
 
-class FreezeDetectorRunnable : public ACE_Based::Runnable
+class FreezeDetectorRunnable : public Trinity::Runnable
 {
 private:
     uint32 _loops;
@@ -131,10 +133,10 @@ public:
         _lastChange = 0;
         while (!World::IsStopped())
         {
-            ACE_Based::Thread::Sleep(1000);
+            Trinity::Thread::Sleep(1000);
             uint32 curtime = getMSTime();
             // normal work
-            uint32 worldLoopCounter = World::m_worldLoopCounter.value();
+            uint32 worldLoopCounter = World::m_worldLoopCounter.load();
             if (_loops != worldLoopCounter)
             {
                 _lastChange = curtime;
@@ -243,25 +245,18 @@ int Master::Run()
     // After loadeding comfig from DB
     RunAuthserverIfNeed();
 
-    ///- Initialize the signal handlers
-    WorldServerSignalHandler signalINT, signalTERM;
-    #ifdef _WIN32
-    WorldServerSignalHandler signalBREAK;
-    #endif /* _WIN32 */
-
     ///- Register worldserver's signal handlers
-    ACE_Sig_Handler handle;
-    handle.register_handler(SIGINT, &signalINT);
-    handle.register_handler(SIGTERM, &signalTERM);
+    std::signal(SIGINT, &WorldServerSignalHandler);
+    std::signal(SIGTERM, &WorldServerSignalHandler);
 #ifdef _WIN32
-    handle.register_handler(SIGBREAK, &signalBREAK);
+    std::signal(SIGBREAK, &WorldServerSignalHandler);
 #endif
 
     ///- Launch WorldRunnable thread
-    ACE_Based::Thread worldThread(new WorldRunnable);
-    worldThread.setPriority(ACE_Based::Highest);
+    Trinity::Thread worldThread(new WorldRunnable);
+    worldThread.setPriority(Trinity::Priority::Highest);
 
-    ACE_Based::Thread* cliThread = NULL;
+    Trinity::Thread* cliThread = NULL;
 
 #ifdef _WIN32
     if (sConfigMgr->GetBoolDefault("Console.Enable", true) && (m_ServiceStatus == -1)/* need disable console in service mode*/)
@@ -270,10 +265,10 @@ int Master::Run()
 #endif
     {
         ///- Launch CliRunnable thread
-        cliThread = new ACE_Based::Thread(new CliRunnable);
+        cliThread = new Trinity::Thread(new CliRunnable);
     }
 
-    ACE_Based::Thread rarThread(new RARunnable);
+    Trinity::Thread rarThread(new RARunnable);
 
 #if defined(_WIN32) || defined(__linux__)
     ///- Handle affinity for multiple processors and process priority
@@ -351,20 +346,38 @@ int Master::Run()
     {
         FreezeDetectorRunnable* fdr = new FreezeDetectorRunnable();
         fdr->SetDelayTime(freezeDelay * 1000);
-        ACE_Based::Thread freezeThread(fdr);
-        freezeThread.setPriority(ACE_Based::Highest);
+        Trinity::Thread freezeThread(fdr);
+        freezeThread.setPriority(Trinity::Priority::Highest);
     }
 
     ///- Launch the world listener socket
     uint16 worldPort = uint16(sWorld->getIntConfig(CONFIG_PORT_WORLD));
     std::string bindIp = sConfigMgr->GetStringDefault("BindIP", "0.0.0.0");
 
-    if (sWorldSocketMgr->StartNetwork(worldPort, bindIp.c_str()) == -1)
+    // The acceptor runs on this context; each NetworkThread owns its own, so
+    // this one only ever handles the listener. It is pumped by a dedicated
+    // thread because the world loop below never returns to an event loop.
+    boost::asio::io_context _ioContext;
+
+    // One network thread matches the single-reactor behaviour the ACE build
+    // had; the pool exists so this can be raised without touching code.
+    int32 networkThreads = sConfigMgr->GetIntDefault("Network.Threads", 1);
+    if (networkThreads <= 0)
+    {
+        TC_LOG_ERROR("server.worldserver", "Network.Threads must be greater than 0");
+        World::StopNow(ERROR_EXIT_CODE);
+        return 1;
+    }
+
+    if (!sWorldSocketMgr->StartNetwork(_ioContext, bindIp, worldPort, networkThreads))
     {
         TC_LOG_ERROR("server.worldserver", "Failed to start network");
         World::StopNow(ERROR_EXIT_CODE);
         // go down and shutdown the server
     }
+
+    auto ioContextGuard = boost::asio::make_work_guard(_ioContext);
+    std::thread ioContextThread([&_ioContext]() { _ioContext.run(); });
 
     // set server online (allow connecting now)
     LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag & ~%u, population = 0 WHERE id = '%u'", REALM_FLAG_INVALID, realmID);
@@ -425,12 +438,7 @@ int Master::Run()
         DWORD numb;
         WriteConsoleInput(hStdIn, b, 4, &numb);
 
-        // Wait briefly so the CLI thread can exit on its own when stdin is a
-        // real console, then force-terminate it. This keeps shutdown fast and
-        // prevents hanging forever when stdin is not a console (e.g. launched
-        // via script/service where WriteConsoleInput cannot unblock fgets).
-        ACE_Based::Thread::Sleep(500);
-        cliThread->destroy();
+        cliThread->wait();
 
         #else
 
@@ -444,6 +452,12 @@ int Master::Run()
     // for some unknown reason, unloading scripts here and not in worldrunnable
     // fixes a memory leak related to detaching threads from the module
     //UnloadScriptingModule();
+
+    // The listener stops before the process does, or run() never returns.
+    ioContextGuard.reset();
+    _ioContext.stop();
+    if (ioContextThread.joinable())
+        ioContextThread.join();
 
     OpenSSLCrypto::threadsCleanup();
     // Exit the process with specified return value
@@ -528,27 +542,6 @@ bool Master::_StartDB()
     {
         TC_LOG_ERROR("server.worldserver", "Cannot connect to login database %s", dbString.c_str());
         return false;
-    }
-
-    ///- Get playerbots database info from configuration file
-    dbString = sConfigMgr->GetStringDefault("PlayerbotsDatabaseInfo", "");
-    if (!dbString.empty())
-    {
-        asyncThreads = uint8(sConfigMgr->GetIntDefault("PlayerbotsDatabase.WorkerThreads", 1));
-        if (asyncThreads < 1 || asyncThreads > 32)
-        {
-            TC_LOG_ERROR("server.worldserver", "Playerbots database: invalid number of worker threads specified. "
-                "Please pick a value between 1 and 32.");
-            return false;
-        }
-
-        synchThreads = uint8(sConfigMgr->GetIntDefault("PlayerbotsDatabase.SynchThreads", 1));
-        ///- Initialise the playerbots database
-        if (!PlayerbotsDatabase.Open(dbString, asyncThreads, synchThreads))
-        {
-            TC_LOG_ERROR("server.worldserver", "Cannot connect to playerbots database %s", dbString.c_str());
-            return false;
-        }
     }
 
     ///- Get the realm Id from the configuration file

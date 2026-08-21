@@ -15,6 +15,7 @@
 * with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <mutex>
 #include "ScriptMgr.h"
 #include "SpellScript.h"
 #include "ulduar.h"
@@ -24,7 +25,6 @@
 
 #include <limits>
 #include <map>
-#include "ace/Mutex.h"
 
 enum Yells
 {
@@ -381,11 +381,11 @@ class boss_mimiron : public CreatureScript
                 if (_phase != PHASE_COMBAT)
                     return;
 
-                _mapMutex.acquire();
+                _mapMutex.lock();
                 bool res = true;
                 // Check if there is still a false value.
                 std::for_each(_isSelfRepairing.begin(), _isSelfRepairing.end(), EqualHelper(res));
-                _mapMutex.release();
+                _mapMutex.unlock();
                 if (res)
                 {
                     // We're down, baby.
@@ -866,37 +866,37 @@ class boss_mimiron : public CreatureScript
                         break;
                     // Repair stuff
                     case DO_LEVIATHAN_SELF_REPAIR_START:
-                        _mapMutex.acquire();
+                        _mapMutex.lock();
                         _isSelfRepairing[DATA_LEVIATHAN_MK_II] = true;
-                        _mapMutex.release();
+                        _mapMutex.unlock();
                         BotAliveCheck();
                         break;
                     case DO_LEVIATHAN_SELF_REPAIR_END:
-                        _mapMutex.acquire();
+                        _mapMutex.lock();
                         _isSelfRepairing[DATA_LEVIATHAN_MK_II] = false;
-                        _mapMutex.release();
+                        _mapMutex.unlock();
                         break;
                     case DO_VX001_SELF_REPAIR_START:
-                        _mapMutex.acquire();
+                        _mapMutex.lock();
                         _isSelfRepairing[DATA_VX_001] = true;
-                        _mapMutex.release();
+                        _mapMutex.unlock();
                         BotAliveCheck();
                         break;
                     case DO_VX001_SELF_REPAIR_END:
-                        _mapMutex.acquire();
+                        _mapMutex.lock();
                         _isSelfRepairing[DATA_VX_001] = false;
-                        _mapMutex.release();
+                        _mapMutex.unlock();
                         break;
                     case DO_AERIAL_SELF_REPAIR_START:
-                        _mapMutex.acquire();
+                        _mapMutex.lock();
                         _isSelfRepairing[DATA_AERIAL_UNIT] = true;
-                        _mapMutex.release();
+                        _mapMutex.unlock();
                         BotAliveCheck();
                         break;
                     case DO_AERIAL_SELF_REPAIR_END:
-                        _mapMutex.acquire();
+                        _mapMutex.lock();
                         _isSelfRepairing[DATA_AERIAL_UNIT] = false;
-                        _mapMutex.release();
+                        _mapMutex.unlock();
                         break;
                     // Achiev
                     case DATA_AVOIDED_ROCKET_STRIKES:
@@ -917,7 +917,7 @@ class boss_mimiron : public CreatureScript
             }
 
             private:
-                ACE_Mutex _mapMutex;
+                std::mutex _mapMutex;
                 std::map<uint32, bool> _isSelfRepairing;
                 std::map<BombIndices, bool> _setUpUsTheBomb;
                 Phases _phase;
@@ -1854,6 +1854,8 @@ class boss_aerial_unit : public CreatureScript
 
             void DoAction(int32 action) override
             {
+                Position destination;
+
                 switch (action)
                 {
                     case DO_START_AERIAL:
@@ -1873,8 +1875,7 @@ class boss_aerial_unit : public CreatureScript
                             DoCast(me, SPELL_MAGNETIC_CORE);
                             DoCast(me, SPELL_MAGNETIC_CORE_VISUAL);
                             // Move to floor.
-                            Position destination;
-                            me->GetPosition(&destination);
+                            destination = me->GetPosition();
                             destination.m_positionZ = 368.965f;
                             me->GetMotionMaster()->MoveLand(1, destination, 5.0f);  // Check if MoveLand is ok here, a flying unit should have a landing animation, but... just 4 the case
                             _events.DelayEvents(20*IN_MILLISECONDS);
@@ -1914,6 +1915,8 @@ class boss_aerial_unit : public CreatureScript
 
                 while (uint32 eventId = _events.ExecuteEvent())
                 {
+                    Position destination;
+
                     switch (eventId)
                     {
                         case EVENT_PLASMA_BALL:
@@ -1941,8 +1944,7 @@ class boss_aerial_unit : public CreatureScript
                             return;
                         case EVENT_REACTIVATE_AERIAL:
                             me->RemoveAurasDueToSpell(SPELL_MAGNETIC_CORE_VISUAL);
-                            Position destination;
-                            me->GetPosition(&destination);
+                            destination = me->GetPosition();
                             destination.m_positionZ = 380.04f;
                             // FIXME find correct speed
                             me->GetMotionMaster()->MoveTakeoff(1, destination, 5.0f); // Check if MoveTakeoff is ok here, a flying unit should have a landing animation, but... just 4 the case
