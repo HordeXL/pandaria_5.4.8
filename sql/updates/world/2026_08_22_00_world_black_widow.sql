@@ -1,7 +1,7 @@
 DELETE FROM `creature_addon` WHERE `guid` IN (SELECT `guid` FROM `creature` WHERE `id` = 45582);
 DELETE FROM `waypoint_data` WHERE `id` IN (SELECT `guid` FROM `creature` WHERE `id` = 45582);
 
-UPDATE `creature_template` SET `unit_flags` = 0, `AIName` = "SmartAI" WHERE `entry` = 45582;
+UPDATE `creature_template` SET `unit_flags` = 0, `AIName` = "SmartAI", `ScriptName` = "" WHERE `entry` = 45582;
 
 DELETE FROM `smart_scripts` WHERE `entryorguid` = 45582 AND `source_type` = 0;
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
@@ -41,5 +41,3 @@ INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `p
 (171557, 45582, 0, 10, 10, 1, 1, 0, 0, -10787.5, -187.5, 41.6769, 5.13875, 300, 10, 651, 100, 1, 0),
 (171558, 45582, 0, 10, 10, 1, 1, 0, 0, -10322.8, -46.042, 41.8837, 6.27606, 300, 10, 651, 100, 1, 0),
 (171559, 45582, 0, 10, 10, 1, 1, 0, 0, -10712.4, 28.4112, 34.8656, 1.26868, 300, 10, 651, 100, 1, 0);
-
-
