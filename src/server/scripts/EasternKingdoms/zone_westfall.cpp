@@ -15,15 +15,34 @@
 * with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* ScriptData
-SDName: Westfall
-SD%Complete: 0
-SDComment:
-SDCategory: Westfall
-EndScriptData */
+#include "ScriptMgr.h"
+#include "SpellScript.h"
 
-/* ContentData
-EndContentData */
+// Unbound Energy 79084
+class spell_westfall_unbound_energy : public SpellScript
+{
+    PrepareSpellScript(spell_westfall_unbound_energy);
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        if (targets.empty())
+            return;
+
+        Unit* caster = GetCaster();
+        targets.remove_if([caster](WorldObject const* target)->bool
+        {
+            return caster == target;
+        });
+
+        if (targets.size() > 1)
+            Trinity::Containers::RandomResizeList(targets, 1);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_westfall_unbound_energy::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
+    }
+};
 
 // Wake Harvest Golem 79436
 class spell_westfall_wake_harvest_golem : public SpellScript
@@ -44,5 +63,6 @@ class spell_westfall_wake_harvest_golem : public SpellScript
 
 void AddSC_westfall()
 {
+	new spell_script<spell_westfall_unbound_energy>("spell_westfall_unbound_energy");
     new spell_script<spell_westfall_wake_harvest_golem>("spell_westfall_wake_harvest_golem");
 }
