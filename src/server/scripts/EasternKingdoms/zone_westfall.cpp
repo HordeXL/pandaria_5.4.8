@@ -61,8 +61,25 @@ class spell_westfall_wake_harvest_golem : public SpellScript
     }
 };
 
+// Quest Credit: Jangolode Event 79275
+class spell_westfall_quest_credit_jangolode_event : public SpellScript
+{
+    PrepareSpellScript(spell_westfall_quest_credit_jangolode_event);
+
+    void HandleScriptEffect(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->ExitVehicle();
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_westfall_quest_credit_jangolode_event::HandleScriptEffect, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 void AddSC_westfall()
 {
 	new spell_script<spell_westfall_unbound_energy>("spell_westfall_unbound_energy");
     new spell_script<spell_westfall_wake_harvest_golem>("spell_westfall_wake_harvest_golem");
+    new spell_script<spell_westfall_quest_credit_jangolode_event>("spell_westfall_quest_credit_jangolode_event");
 }
