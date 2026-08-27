@@ -72,7 +72,6 @@ public:
             { "access_requirement",             SEC_ADMINISTRATOR,  true,   &HandleReloadAccessRequirementCommand,          },
             { "achievement_criteria_data",      SEC_ADMINISTRATOR,  true,   &HandleReloadAchievementCriteriaDataCommand,    },
             { "achievement_reward",             SEC_ADMINISTRATOR,  true,   &HandleReloadAchievementRewardCommand,          },
-            { "achievement_reward_locale",      SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesAchievementRewardCommand,   },
             { "all",                            SEC_ADMINISTRATOR,  true,   reloadAllCommandTable                           },
             { "areatrigger_queststarter",       SEC_ADMINISTRATOR,  true,   &HandleReloadQuestGiverAreaTriggersCommand,     },
             { "areatrigger_involvedrelation",   SEC_ADMINISTRATOR,  true,   &HandleReloadQuestAreaTriggersCommand,          },
@@ -92,7 +91,6 @@ public:
             { "creature_scaling",               SEC_ADMINISTRATOR,  true,   &HandleReloadCreatureScallingCommand,           },
             { "creature_summon_groups",         SEC_ADMINISTRATOR,  true,   &HandleReloadCreatureSummonGroupsCommand,       },
             { "creature_template",              SEC_ADMINISTRATOR,  true,   &HandleReloadCreatureTemplateCommand,           },
-            { "creature_template_locale",       SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesCreatureCommand,            },
             //{ "db_script_string",              SEC_ADMINISTRATOR, true,  &HandleReloadDbScriptStringCommand,            },
             { "disables",                       SEC_ADMINISTRATOR,  true,   &HandleReloadDisablesCommand,                   },
             { "disenchant_loot_template",       SEC_ADMINISTRATOR,  true,   &HandleReloadLootTemplatesDisenchantCommand,    },
@@ -106,17 +104,22 @@ public:
             { "gm_tickets",                     SEC_ADMINISTRATOR,  true,   &HandleReloadGMTicketsCommand,                  },
             { "gossip_menu",                    SEC_ADMINISTRATOR,  true,   &HandleReloadGossipMenuCommand,                 },
             { "gossip_menu_option",             SEC_ADMINISTRATOR,  true,   &HandleReloadGossipMenuOptionCommand,           },
-            { "gossip_menu_option_locale",      SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesGossipMenuOptionCommand,    },
             { "item_enchantment_template",      SEC_ADMINISTRATOR,  true,   &HandleReloadItemEnchantementsCommand,          },
             { "item_loot_template",             SEC_ADMINISTRATOR,  true,   &HandleReloadLootTemplatesItemCommand,          },
-            { "item_template_locale",           SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesItemCommand,                },
             { "lfg_dungeon_rewards",            SEC_ADMINISTRATOR,  true,   &HandleReloadLfgRewardsCommand,                 },
-            { "locales_creature_text",          SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesCreatureTextCommand,        },
-            { "locales_gameobject",             SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesGameobjectCommand,          },
-            { "locales_npc_text",               SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesNpcTextCommand,             },
-            { "locales_page_text",              SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesPageTextCommand,            },
-            { "locales_points_of_interest",     SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesPointsOfInterestCommand,    },
-            { "locales_quest",                  SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesQuestCommand,               },
+            { "achievement_reward_locale",      SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesAchievementRewardCommand,   },
+            { "creature_template_locale",       SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesCreatureCommand,            },
+            { "creature_text_locale",           SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesCreatureTextCommand,        },
+            { "gameobject_template_locale",     SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesGameobjectCommand,          },
+            { "gossip_menu_option_locale",      SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesGossipMenuOptionCommand,    },
+            { "item_template_locale",           SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesItemCommand,                },
+            { "npc_text_locale",                SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesNpcTextCommand,             },
+            { "page_text_locale",               SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesPageTextCommand,            },
+            { "points_of_interest_locale",      SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesPointsOfInterestCommand,    },
+            { "quest_template_locale",          SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesQuestCommand,               },
+            { "quest_objective_locale",         SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesQuestObjectiveCommand,      },
+            { "quest_offer_reward_locale",      SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesQuestOfferRewardCommand,    },
+            { "quest_request_items_locale",     SEC_ADMINISTRATOR,  true,   &HandleReloadLocalesQuestRequestItemsCommand,   },
             { "mail_level_reward",              SEC_ADMINISTRATOR,  true,   &HandleReloadMailLevelRewardCommand,            },
             { "mail_loot_template",             SEC_ADMINISTRATOR,  true,   &HandleReloadLootTemplatesMailCommand,          },
             { "milling_loot_template",          SEC_ADMINISTRATOR,  true,   &HandleReloadLootTemplatesMillingCommand,       },
@@ -331,6 +334,9 @@ public:
         HandleReloadLocalesPageTextCommand(handler, "a");
         HandleReloadLocalesPointsOfInterestCommand(handler, "a");
         HandleReloadLocalesQuestCommand(handler, "a");
+        HandleReloadLocalesQuestObjectiveCommand(handler, "a");
+        HandleReloadLocalesQuestOfferRewardCommand(handler, "a");
+        HandleReloadLocalesQuestRequestItemsCommand(handler, "a");
         return true;
     }
 
@@ -1109,17 +1115,17 @@ public:
 
     static bool HandleReloadLocalesCreatureTextCommand(ChatHandler* handler, const char* /*args*/)
     {
-        TC_LOG_INFO("misc", "Re-Loading Locales Creature Texts...");
+        TC_LOG_INFO("misc", "Re-Loading Creature Texts Locale...");
         sCreatureTextMgr->LoadCreatureTextLocales();
-        handler->SendGlobalGMSysMessage("DB table `locales_creature_text` reloaded.");
+        handler->SendGlobalGMSysMessage("DB table `creature_text_locale` reloaded.");
         return true;
     }
 
     static bool HandleReloadLocalesGameobjectCommand(ChatHandler* handler, const char* /*args*/)
     {
-        TC_LOG_INFO("misc", "Re-Loading Locales Gameobject...");
+        TC_LOG_INFO("misc", "Re-Loading Gameobject Locale...");
         sObjectMgr->LoadGameObjectLocales();
-        handler->SendGlobalGMSysMessage("DB table `locales_gameobject` reloaded.");
+        handler->SendGlobalGMSysMessage("DB table `gameobject_template_locale` reloaded.");
         return true;
     }
 
@@ -1141,33 +1147,57 @@ public:
 
     static bool HandleReloadLocalesNpcTextCommand(ChatHandler* handler, const char* /*args*/)
     {
-        TC_LOG_INFO("misc", "Re-Loading Locales NPC Text...");
+        TC_LOG_INFO("misc", "Re-Loading NPC Text Locale...");
         sObjectMgr->LoadNpcTextLocales();
-        handler->SendGlobalGMSysMessage("DB table `locales_npc_text` reloaded.");
+        handler->SendGlobalGMSysMessage("DB table `npc_text_locale` reloaded.");
         return true;
     }
 
     static bool HandleReloadLocalesPageTextCommand(ChatHandler* handler, const char* /*args*/)
     {
-        TC_LOG_INFO("misc", "Re-Loading Locales Page Text...");
+        TC_LOG_INFO("misc", "Re-Loading Page Text Locale...");
         sObjectMgr->LoadPageTextLocales();
-        handler->SendGlobalGMSysMessage("DB table `locales_page_text` reloaded.");
+        handler->SendGlobalGMSysMessage("DB table `page_text_locale` reloaded.");
         return true;
     }
 
     static bool HandleReloadLocalesPointsOfInterestCommand(ChatHandler* handler, const char* /*args*/)
     {
-        TC_LOG_INFO("misc", "Re-Loading Locales Points Of Interest...");
+        TC_LOG_INFO("misc", "Re-Loading Points Of Interest Locale...");
         sObjectMgr->LoadPointOfInterestLocales();
-        handler->SendGlobalGMSysMessage("DB table `locales_points_of_interest` reloaded.");
+        handler->SendGlobalGMSysMessage("DB table `points_of_interest_locale` reloaded.");
         return true;
     }
 
     static bool HandleReloadLocalesQuestCommand(ChatHandler* handler, const char* /*args*/)
     {
-        TC_LOG_INFO("misc", "Re-Loading Locales Quest...");
+        TC_LOG_INFO("misc", "Re-Loading Quest Template Locale...");
         sObjectMgr->LoadQuestLocales();
-        handler->SendGlobalGMSysMessage("DB table `locales_quest` reloaded.");
+        handler->SendGlobalGMSysMessage("DB table `quest_template_locale` reloaded.");
+        return true;
+    }
+
+    static bool HandleReloadLocalesQuestObjectiveCommand(ChatHandler* handler, const char* /*args*/)
+    {
+        TC_LOG_INFO("misc", "Re-Loading Quest Objective Locale...");
+        sObjectMgr->LoadQuestObjectiveLocales();
+        handler->SendGlobalGMSysMessage("DB table `quest_objective_locale` reloaded.");
+        return true;
+    }
+
+    static bool HandleReloadLocalesQuestOfferRewardCommand(ChatHandler* handler, const char* /*args*/)
+    {
+        TC_LOG_INFO("misc", "Re-Loading Quest Offer Reward Locale...");
+        sObjectMgr->LoadQuestOfferRewardLocales();
+        handler->SendGlobalGMSysMessage("DB table `quest_offer_reward_locale` reloaded.");
+        return true;
+    }
+
+    static bool HandleReloadLocalesQuestRequestItemsCommand(ChatHandler* handler, const char* /*args*/)
+    {
+        TC_LOG_INFO("misc", "Re-Loading Quest Request Items Locale...");
+        sObjectMgr->LoadQuestRequestItemsLocales();
+        handler->SendGlobalGMSysMessage("DB table `quest_request_items_locale` reloaded.");
         return true;
     }
 

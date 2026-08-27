@@ -60,7 +60,7 @@
 #include "Guild.h"
 #include "LootLockoutMap.h"
 #include "BattlePetMgr.h"
-#include <ace/Stack_Trace.h>
+#include "StackTrace.h"
 
 extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 
@@ -8277,7 +8277,7 @@ SpellEvent::~SpellEvent()
     }
     else
     {
-        ACE_Stack_Trace st;
+        Trinity::StackTrace st;
         TC_LOG_ERROR("shitlog", "~SpellEvent: %s %u tried to delete non-deletable spell %u. Was not deleted, causes memory leak.\n%s",
             (m_Spell->GetCaster()->GetTypeId() == TYPEID_PLAYER ? "Player" : "Creature"), m_Spell->GetCaster()->GetGUIDLow(), m_Spell->m_spellInfo->Id, st.c_str());
         //ASSERT(false);
@@ -9366,7 +9366,7 @@ bool WorldObjectSpellConeTargetCheck::operator()(WorldObject* target)
     }
     else if (_spellInfo->AttributesCu & SPELL_ATTR0_CU_CONE_LINE)
     {
-        if (!_caster->HasInLine(target, _caster->GetObjectSize()))
+        if (!_caster->HasInLine(target, _caster->GetObjectSize() + target->GetObjectSize()))
         {
             if (_coneOffset)
                 _caster->m_orientation = originalOrientation;
@@ -9396,7 +9396,7 @@ WorldObjectSpellTrajTargetCheck::WorldObjectSpellTrajTargetCheck(float range, Po
 bool WorldObjectSpellTrajTargetCheck::operator()(WorldObject* target)
 {
     // return all targets on missile trajectory (0 - size of a missile)
-    if (!_caster->HasInLine(target, 0))
+    if (!_caster->HasInLine(target, target->GetObjectSize()))
         return false;
     return WorldObjectSpellAreaTargetCheck::operator ()(target);
 }
