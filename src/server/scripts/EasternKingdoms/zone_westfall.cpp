@@ -15,15 +15,34 @@
 * with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* ScriptData
-SDName: Westfall
-SD%Complete: 0
-SDComment:
-SDCategory: Westfall
-EndScriptData */
+#include "ScriptMgr.h"
+#include "SpellScript.h"
 
-/* ContentData
-EndContentData */
+// Unbound Energy 79084
+class spell_westfall_unbound_energy : public SpellScript
+{
+    PrepareSpellScript(spell_westfall_unbound_energy);
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        if (targets.empty())
+            return;
+
+        Unit* caster = GetCaster();
+        targets.remove_if([caster](WorldObject const* target)->bool
+        {
+            return caster == target;
+        });
+
+        if (targets.size() > 1)
+            Trinity::Containers::RandomResizeList(targets, 1);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_westfall_unbound_energy::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
+    }
+};
 
 // Wake Harvest Golem 79436
 class spell_westfall_wake_harvest_golem : public SpellScript
@@ -42,7 +61,25 @@ class spell_westfall_wake_harvest_golem : public SpellScript
     }
 };
 
+// Quest Credit: Jangolode Event 79275
+class spell_westfall_quest_credit_jangolode_event : public SpellScript
+{
+    PrepareSpellScript(spell_westfall_quest_credit_jangolode_event);
+
+    void HandleScriptEffect(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->ExitVehicle();
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_westfall_quest_credit_jangolode_event::HandleScriptEffect, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 void AddSC_westfall()
 {
+	new spell_script<spell_westfall_unbound_energy>("spell_westfall_unbound_energy");
     new spell_script<spell_westfall_wake_harvest_golem>("spell_westfall_wake_harvest_golem");
+    new spell_script<spell_westfall_quest_credit_jangolode_event>("spell_westfall_quest_credit_jangolode_event");
 }
