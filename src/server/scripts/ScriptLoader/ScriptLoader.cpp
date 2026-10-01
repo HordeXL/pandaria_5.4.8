@@ -353,6 +353,9 @@ void AddSC_westfall();
 void AddSC_wetlands();
 void AddSC_elwynn_forest();
 void AddSC_twilight_highlands();
+//void AddSC_tol_barad();
+
+void AddSC_boss_mobus();
 
 //kalimdor
 void AddSC_blackfathom_deeps();              //Blackfathom Depths
@@ -1390,6 +1393,9 @@ void AddEasternKingdomsScripts()
     AddSC_wetlands();
     AddSC_elwynn_forest();
     AddSC_twilight_highlands();
+    //AddSC_tol_barad();
+
+    AddSC_boss_mobus();
 #endif
 }
 
