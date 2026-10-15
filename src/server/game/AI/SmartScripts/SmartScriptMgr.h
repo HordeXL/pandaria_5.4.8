@@ -432,7 +432,7 @@ enum SMART_SCRIPT_RESPAWN_CONDITION
 enum SMART_ACTION
 {
     SMART_ACTION_NONE                               = 0,      // No action
-    SMART_ACTION_TALK                               = 1,      // groupID from creature_text, duration to wait before TEXT_OVER event is triggered
+    SMART_ACTION_TALK                               = 1,      // groupID from creature_text, duration to wait before TEXT_OVER event is triggered, useTalkTarget (0/1) - use target as talk target
     SMART_ACTION_SET_FACTION                        = 2,      // FactionId (or 0 for default)
     SMART_ACTION_MORPH_TO_ENTRY_OR_MODEL            = 3,      // Creature_template entry(param1) OR ModelId (param2) (or 0 for both to demorph)
     SMART_ACTION_SOUND                              = 4,      // SoundId, onlySelf
@@ -458,7 +458,7 @@ enum SMART_ACTION
     SMART_ACTION_EVADE                              = 24,     // No Params
     SMART_ACTION_FLEE_FOR_ASSIST                    = 25,     // With Emote
     SMART_ACTION_CALL_GROUPEVENTHAPPENS             = 26,     // QuestID
-    // none                                         = 27,
+    // RESERVED                                        = 27,
     SMART_ACTION_REMOVEAURASFROMSPELL               = 28,     // Spellid, 0 removes all auras
     SMART_ACTION_FOLLOW                             = 29,     // Distance (0 = default), Angle (0 = default), EndCreatureEntry, credit, creditType (0monsterkill, 1event)
     SMART_ACTION_RANDOM_PHASE                       = 30,     // PhaseId1, PhaseId2, PhaseId3...
@@ -549,7 +549,16 @@ enum SMART_ACTION
     SMART_ACTION_RANDOM_SOUND                       = 115,    // soundId1, soundId2, soundId3, soundId4, soundId5, onlySelf
     SMART_ACTION_SET_CORPSE_DELAY                   = 116,    // timer
     SMART_ACTION_DISABLE_EVADE                      = 117,    // 0/1 (1 = disabled, 0 = enabled)
+    // RESERVED                                        = 118,
+    // RESERVED                                        = 119,
+    // RESERVED                                        = 120,
+    // RESERVED                                        = 121,
     SMART_ACTION_FLEE                               = 122,    // fleeTime
+    // RESERVED                                        = 123,
+    // RESERVED                                        = 124,
+    SMART_ACTION_TRIGGER_RANDOM_TIMED_EVENT         = 125,    // id min range, id max range
+    // RESERVED                                        = 126,
+    // RESERVED                                        = 127,
     SMART_ACTION_PLAY_ANIMKIT                       = 128,    // id, type (0 = oneShot, 1 = aiAnim, 2 = meleeAnim, 3 = movementAnim)
     SMART_ACTION_END                                = 129,
 
@@ -562,7 +571,7 @@ enum SMART_ACTION
     SMART_ACTION_STOP_FOLLOW                        = 205,
     SMART_ACTION_SPELL_VISUAL_KIT                   = 206,
     SMART_ACTION_CAST_RANDOM_SPELL                  = 207,
-    SMART_ACTION_END_project                        = 208,
+    SMART_ACTION_END_project                        = 208
 };
 
 struct SmartAction
@@ -575,6 +584,7 @@ struct SmartAction
         {
             uint32 textGroupID;
             uint32 duration;
+            uint32 useTalkTarget;
         } talk;
 
         struct
@@ -1059,6 +1069,12 @@ struct SmartAction
         {
             uint32 fleeTime;
         } flee;
+
+        struct
+        {
+            uint32 minId;
+            uint32 maxId;
+        } randomTimedEvent;
 
         struct
         {

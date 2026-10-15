@@ -29,6 +29,8 @@
 #ifndef _WIN32
     #include <stddef.h>
     #include <dirent.h>
+#else
+    #include <Windows.h>
 #endif
 
 #ifdef __linux__

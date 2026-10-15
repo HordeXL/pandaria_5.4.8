@@ -107,7 +107,6 @@ class npc_dagger_in_dark_voljin : public CreatureScript
                 creature->AI()->DoAction(ACTION_START_INTRO);
 
             CloseGossipMenuFor(player);
-
             return true;
         }
 
@@ -115,7 +114,6 @@ class npc_dagger_in_dark_voljin : public CreatureScript
         {
             player->ADD_GOSSIP_ITEM_DB(player->GetDefaultGossipMenuForSource(creature), 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
             SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
-
             return true;
         }
 
@@ -145,6 +143,7 @@ class npc_dagger_in_dark_voljin : public CreatureScript
                     scheduler.CancelAll();
                     me->StopMoving();
                     Movement::MoveSplineInit init(me);
+
                     for (auto&& itr : voljinCavePath)
                     {
                         if (itr.GetPositionZ() < me->GetPositionZ())
@@ -1886,7 +1885,7 @@ void AddSC_dagger_in_the_dark()
     new creature_script<npc_dagger_in_dark_rakgor_bloodrazor>("npc_dagger_in_dark_rakgor_bloodrazor");
     new creature_script<npc_dagger_in_dark_broken_mogu_tablet>("npc_dagger_in_dark_broken_mogu_tablet");
     new creature_script<npc_dagger_in_dark_goblin_cannon>("npc_dagger_in_dark_goblin_cannon");
-    
+
     new spell_script<spell_dagger_in_dark_shadowstep_selector>("spell_dagger_in_dark_shadowstep_selector");
     new spell_script<spell_dagger_in_dark_shadowstep_eff>("spell_dagger_in_dark_shadowstep_eff");
     new spell_script<spell_dagger_in_dark_hatch_selector>("spell_dagger_in_dark_hatch_selector");

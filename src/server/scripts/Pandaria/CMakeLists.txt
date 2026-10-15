@@ -10,20 +10,6 @@
 
 set(scripts_STAT_SRCS
   ${scripts_STAT_SRCS}
-  Pandaria/boss_oondasta.cpp
-  Pandaria/boss_nalak.cpp
-  Pandaria/boss_sha_of_anger.cpp
-  Pandaria/boss_galion.cpp
-  Pandaria/zone_dread_wastes.cpp
-  Pandaria/zone_isle_of_giants.cpp
-  Pandaria/zone_isle_of_thunder.cpp
-  Pandaria/zone_krasarang_wilds.cpp
-  Pandaria/zone_kun_lai_summit.cpp
-  Pandaria/zone_the_jade_forest.cpp
-  Pandaria/zone_the_veiled_stair.cpp
-  Pandaria/zone_townlong_steppes.cpp
-  Pandaria/zone_vale_of_eternal_blossoms.cpp
-  Pandaria/zone_valley_of_the_four_winds.cpp
   Pandaria/WanderingIsland/zone_wandering_island_east.cpp
   Pandaria/WanderingIsland/zone_wandering_island_north.cpp
   Pandaria/WanderingIsland/zone_wandering_island_south.cpp
@@ -191,6 +177,20 @@ set(scripts_STAT_SRCS
   Pandaria/SiegeOfOrgrimmar/instance_siege_of_orgrimmar.cpp
   Pandaria/SiegeOfOrgrimmar/siege_of_orgrimmar.cpp
   Pandaria/SiegeOfOrgrimmar/siege_of_orgrimmar.h
+  Pandaria/Zones/zone_dread_wastes.cpp
+  Pandaria/Zones/zone_isle_of_giants.cpp
+  Pandaria/Zones/zone_isle_of_thunder.cpp
+  Pandaria/Zones/zone_krasarang_wilds.cpp
+  Pandaria/Zones/zone_kun_lai_summit.cpp
+  Pandaria/Zones/zone_the_jade_forest.cpp
+  Pandaria/Zones/zone_the_veiled_stair.cpp
+  Pandaria/Zones/zone_townlong_steppes.cpp
+  Pandaria/Zones/zone_vale_of_eternal_blossoms.cpp
+  Pandaria/Zones/zone_valley_of_the_four_winds.cpp
+  Pandaria/WorldBosses/boss_galion.cpp
+  Pandaria/WorldBosses/boss_nalak.cpp
+  Pandaria/WorldBosses/boss_oondasta.cpp
+  Pandaria/WorldBosses/boss_sha_of_anger.cpp
 )
 
 message("  -> Prepared: Pandaria")
